@@ -125,5 +125,39 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
+// Rota de Registro (POST)
+router.post('/register', async (req, res) => {
+  const { nome, cpf, email, telefone, usuario, senha, confirmarSenha } = req.body;
+  
+  console.log("Dados recebidos no formulário:", req.body);
+
+  // Verifica campos obrigatórios
+  if (!nome || !usuario || !senha || !confirmarSenha) {
+    return res.render('register', { error: 'Preencha todos os campos obrigatórios.' });
+  }
+
+  // 🔴 Verifica se as senhas coincidem
+  if (senha !== confirmarSenha) {
+    return res.render('register', { error: 'As senhas não coincidem.' });
+  }
+
+  try {
+    const hash = await bcrypt.hash(senha, 10);
+
+    await pool.query(
+      `INSERT INTO Usuarios (Nome, CPF, Email, Telefone, NomeUsuario, Senha) VALUES (?, ?, ?, ?, ?, ?)`,
+      [nome, cpf, email, telefone, usuario, hash]
+    );
+
+    res.redirect('/login');
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'ER_DUP_ENTRY') {
+        return res.render('register', { error: 'Erro: Nome de usuário ou CPF já cadastrado.' });
+    }
+    res.render('register', { error: 'Erro no registro. Tente novamente mais tarde.' });
+  }
+});
+
 
 module.exports = router;

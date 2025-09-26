@@ -7,7 +7,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f0f2f5;
+      background: linear-gradient(135deg, #28a745, #007bff);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -22,9 +22,14 @@
       width: 350px;
       text-align: center;
     }
+    .login-container img.logo {
+      width: 180px;
+      margin-bottom: 1rem;
+    }
     h1 {
       margin-bottom: 1.5rem;
-      color: #333;
+      color: #007bff;
+      font-size: 1.4rem;
     }
     input[type="text"], input[type="password"] {
       width: 100%;
@@ -33,6 +38,7 @@
       border-radius: 5px;
       border: 1px solid #ccc;
       font-size: 1rem;
+      box-sizing: border-box;
     }
     button {
       width: 100%;
@@ -59,14 +65,25 @@
       color: red;
       margin-bottom: 1rem;
     }
+    a {
+      color: #007bff;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <div class="login-container">
+
     <h1>Agrovale Login</h1>
+
     <% if (typeof error !== 'undefined' && error) { %>
       <div class="error"><%= error %></div>
     <% } %>
+
     <form action="/login" method="POST">
       <input type="text" name="username" placeholder="Usuário" required>
       <input type="password" name="password" placeholder="Senha" required>
