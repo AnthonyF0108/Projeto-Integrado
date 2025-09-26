@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Estatísticas - Agrovale</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6fa; display: flex; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px;
+      background: #007bff;
+      color: white;
+      height: 100vh;
+      position: fixed;
+      top: 0; left: 0;
+      padding-top: 1rem;
+    }
+    .sidebar h2 { text-align: center; margin-bottom: 2rem; }
+    .sidebar a {
+      display: block;
+      padding: 0.8rem 1rem;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .sidebar a:hover { background: #0056b3; }
+
+    /* Conteúdo */
+    .content { margin-left: 220px; padding: 2rem; width: calc(100% - 220px); }
+    h1 { margin-bottom: 2rem; }
+
+    /* Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .card h3 { margin: 0; font-size: 1.2rem; color: #333; }
+    .card p { margin: 0.5rem 0 0; font-size: 1.5rem; font-weight: bold; color: #007bff; }
+
+    /* Lista */
+    .box {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .box h3 { margin-top: 0; }
+    .box ul { padding-left: 20px; margin: 0; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <a href="/dashboard">🏠 Início</a>
+    <a href="/produtos">📦 Consulta de Produto</a>
+    <a href="/vendas">💰 Vendas</a>
+    <a href="/estatisticas">📊 Estatísticas</a>
+    <a href="/clientes">👤 Clientes</a>
+    <a href="/logout">🚪 Sair</a>
+  </div>
+
+  <!-- Conteúdo -->
+  <div class="content">
+    <h1>Relatórios e Estatísticas</h1>
+
+    <!-- Cards -->
+    <div class="cards">
+      <div class="card">
+        <h3>Total de Vendas</h3>
+        <p><%= totalVendas %></p>
+      </div>
+      <div class="card">
+        <h3>Valor Total Vendido</h3>
+        <p>R$ <%= totalValor.toFixed(2) %></p>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="box">
+      <h3>Produtos Mais Vendidos</h3>
+      <% if (topProdutos.length === 0) { %>
+        <p>Nenhum produto vendido ainda.</p>
+      <% } else { %>
+        <ul>
+          <% topProdutos.forEach(p => { %>
+            <li><strong><%= p.nome_produto %></strong> - <%= p.qtd %> vendidos</li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

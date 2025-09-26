@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Clientes - Agrovale</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6fa; display: flex; }
+
+    /* Sidebar */
+    .sidebar { width: 220px; background: #007bff; color: white; height: 100vh; position: fixed; top: 0; left: 0; padding-top: 1rem; }
+    .sidebar h2 { text-align: center; margin-bottom: 2rem; }
+    .sidebar a { display: block; padding: 0.8rem 1rem; color: white; text-decoration: none; font-weight: bold; }
+    .sidebar a:hover { background: #0056b3; }
+
+    /* Conteúdo */
+    .content { margin-left: 220px; padding: 2rem; width: calc(100% - 220px); }
+    h1 { margin-bottom: 1rem; }
+
+    /* Botão novo */
+    .btn { padding: 8px 14px; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 0.9rem; }
+    .btn-primary { background: #28a745; color: white; }
+    .btn-warning { background: #ffc107; color: black; }
+    .btn-danger { background: #dc3545; color: white; border: none; }
+    .btn:hover { opacity: 0.9; }
+
+    /* Tabela */
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; border-radius: 5px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background: #007bff; color: white; }
+    tr:hover { background: #f1f1f1; }
+    form { display: inline; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <a href="/dashboard">🏠 Início</a>
+    <a href="/produtos">📦 Consulta de Produto</a>
+    <a href="/vendas">💰 Vendas</a>
+    <a href="/estatisticas">📊 Estatísticas</a>
+    <a href="/clientes">👤 Clientes</a>
+    <a href="/logout">🚪 Sair</a>
+  </div>
+
+  <!-- Conteúdo -->
+  <div class="content">
+    <h1>Clientes</h1>
+    <a href="/clientes/novo" class="btn btn-primary">➕ Novo Cliente</a>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>CPF/CNPJ</th>
+          <th>Email</th>
+          <th>Telefone</th>
+          <th>Endereço</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (clientes.length > 0) { %>
+          <% clientes.forEach(c => { %>
+            <tr>
+              <td><%= c.ClienteID %></td>
+              <td><%= c.Nome %></td>
+              <td><%= c.CPF_CNPJ %></td>
+              <td><%= c.Email %></td>
+              <td><%= c.Telefone %></td>
+              <td><%= c.Endereco %></td>
+              <td>
+                <a href="/clientes/alterar/<%= c.ClienteID %>" class="btn btn-warning">✏️ Editar</a>
+                <form action="/clientes/excluir/<%= c.ClienteID %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
+                  <button type="submit" class="btn btn-danger">🗑️ Excluir</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr><td colspan="7" style="text-align:center;">Nenhum cliente cadastrado.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
