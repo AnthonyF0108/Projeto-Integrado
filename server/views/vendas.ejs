@@ -55,13 +55,35 @@
     .btn-remove:hover { background: #c82333; }
 
     /* Itens */
-    .item-row { display: flex; gap: 10px; align-items: flex-end; margin-top: 10px; }
+    .item-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-top: 10px;
+    }
     .item-row .form-group { flex-grow: 1; }
-    .item-header { display: flex; gap: 10px; font-weight: bold; margin-bottom: 5px; }
-    .item-header > div { flex-grow: 1; }
-    .item-header > div:nth-child(2) { width: 100px; }
-    .item-header > div:nth-child(3), .item-header > div:nth-child(4) { width: 120px; }
-    .item-header > div:nth-child(5) { width: 80px; }
+
+    /* Cabeçalho alinhado com as caixas */
+    .item-header {
+      display: flex;
+      gap: 10px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    /* Empurra os textos do cabeçalho levemente para a direita
+      p/ ficarem exatamente acima das caixas */
+    .item-header > div { padding-left: 6px; }
+
+    /* Mesmas larguras das colunas dos inputs */
+    .item-header > div:first-child { flex: 1; }     /* Produto */
+    .item-header > div:nth-child(2) { width: 100px; }  /* Qtd */
+    .item-header > div:nth-child(3) { width: 120px; }  /* Unitário */
+    .item-header > div:nth-child(4) { width: 120px; }  /* Total */
+    .item-header > div:nth-child(5) { width: 90px; }   /* Botão */
+
+    /* Mantém o botão com largura fixa para não “empurrar” as colunas */
+    .item-row .btn-remove { width: 90px; }
   </style>
 </head>
 <body>
@@ -163,10 +185,115 @@
     </div>
   </div>
 
-  <!-- Script permanece igual -->
-  <script>
-    // (mantive seu script sem alterações)
-    ...
+ <script>
+    let itemCounter = 1;
+
+    function updateFields(select, index) {
+      const selectedOption = select.options[select.selectedIndex];
+      const preco = parseFloat(selectedOption?.dataset?.preco);
+      const unidade = selectedOption?.dataset?.unidade;
+      const valorUnitarioInput = document.getElementById(`valor-unitario-${index}`);
+      const quantidadeInput = document.getElementById(`quantidade-${index}`);
+
+      if (!isNaN(preco)) {
+        valorUnitarioInput.value = preco.toFixed(2);
+        quantidadeInput.step = (unidade === 'un' || unidade === 'pc') ? 1 : 0.01;
+        updateTotal(index);
+      } else {
+        valorUnitarioInput.value = '';
+        document.getElementById(`valor-total-${index}`).value = '';
+        updateSummary();
+      }
+    }
+
+    function updateTotal(index) {
+      const quantidade = parseFloat(document.getElementById(`quantidade-${index}`).value);
+      const valorUnitario = parseFloat(document.getElementById(`valor-unitario-${index}`).value);
+      const valorTotal = document.getElementById(`valor-total-${index}`);
+
+      if (!isNaN(quantidade) && !isNaN(valorUnitario)) {
+        valorTotal.value = (quantidade * valorUnitario).toFixed(2);
+      } else {
+        valorTotal.value = '0.00';
+      }
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const itemTotals = document.querySelectorAll('input[name="valores_totais[]"]');
+      let valorBruto = 0;
+      itemTotals.forEach(input => {
+        const total = parseFloat(input.value);
+        if (!isNaN(total)) valorBruto += total;
+      });
+
+      const descontoPerc = parseFloat(document.getElementById('desconto').value) || 0;
+      const valorLiquido = valorBruto * (1 - descontoPerc / 100);
+
+      document.getElementById('valor_bruto').value = valorBruto.toFixed(2);
+      document.getElementById('valor_liquido').value = valorLiquido.toFixed(2);
+    }
+
+    function addItem() {
+      const index = itemCounter++;
+      const container = document.getElementById('itens-container');
+
+      const row = document.createElement('div');
+      row.classList.add('item-row');
+
+      row.innerHTML = `
+        <div class="form-group">
+          <select name="produtos[]" class="produto-select" required>
+            <option value="">Selecione um produto</option>
+            <% produtos.forEach(produto => { %>
+              <option value="<%= produto.ProdutoID %>" 
+                      data-preco="<%= parseFloat(produto.PrecoVenda) %>" 
+                      data-unidade="<%= produto.UnidadeMedida %>">
+                <%= produto.Nome %> (R$ <%= parseFloat(produto.PrecoVenda).toFixed(2) %>)
+              </option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="form-group" style="width: 100px;">
+          <input type="number" name="quantidades[]" id="quantidade-${index}" value="1" required>
+        </div>
+        <div class="form-group" style="width: 120px;">
+          <input type="text" name="valores_unitarios[]" id="valor-unitario-${index}" readonly>
+        </div>
+        <div class="form-group" style="width: 120px;">
+          <input type="text" name="valores_totais[]" id="valor-total-${index}" readonly>
+        </div>
+        <button type="button" class="btn btn-remove">Remover</button>
+      `;
+
+      // adicionar listeners
+      const select = row.querySelector('.produto-select');
+      const qty = row.querySelector(`#quantidade-${index}`);
+      const btnRemove = row.querySelector('.btn-remove');
+
+      select.addEventListener('change', () => updateFields(select, index));
+      qty.addEventListener('input', () => updateTotal(index));
+      btnRemove.addEventListener('click', () => { row.remove(); updateSummary(); });
+
+      container.appendChild(row);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // primeira linha
+      const firstSelect = document.querySelector('.produto-select');
+      const firstQty = document.querySelector('#quantidade-0');
+      const firstRemove = document.querySelector('.item-row .btn-remove');
+
+      if (firstSelect) firstSelect.addEventListener('change', () => updateFields(firstSelect, 0));
+      if (firstQty) firstQty.addEventListener('input', () => updateTotal(0));
+      if (firstRemove) firstRemove.addEventListener('click', (e) => { e.target.closest('.item-row').remove(); updateSummary(); });
+
+      // botão adicionar
+      document.getElementById('add-item').addEventListener('click', addItem);
+
+      // desconto
+      document.getElementById('desconto').addEventListener('input', updateSummary);
+    });
   </script>
 </body>
 </html>
