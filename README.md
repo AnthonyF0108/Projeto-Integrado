@@ -28,7 +28,7 @@ O objetivo é gerenciar informações ligadas ao domínio agrícola, armazenando
 Clone o repositório:
 
 ```bash
-git clone https://github.com/seu-usuario/projeto-agrovale.git
+git clone https://github.com/AnthonyF0108/Projeto-Integrado.git
 cd projeto-agrovale
 ```
 
