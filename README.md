@@ -29,7 +29,7 @@ Clone o repositório:
 
 ```bash
 git clone https://github.com/AnthonyF0108/Projeto-Integrado.git
-cd projeto-agrovale
+cd Projeto-Integrado
 ```
 
 Instale as dependências:
