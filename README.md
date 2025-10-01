@@ -46,10 +46,15 @@ Crie um arquivo `.env` na raiz do projeto com as variáveis de conexão ao banco
 
 ```env
 DB_HOST=localhost
+DB_PORT=3306
 DB_USER=root
-DB_PASS=sua_senha
+DB_PASS="suasenha"
 DB_NAME=agrovale
+
 PORT=3000
+SESSION_SECRET="trocar_para_algo_secreto"
+SESSION_KEY=agrovale_sess
+NODE_ENV=development
 ```
 
 ---
