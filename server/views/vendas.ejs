@@ -6,7 +6,6 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #f5f6fa; display: flex; }
 
-    /* Sidebar */
     .sidebar {
       width: 220px;
       background: #007bff;
@@ -26,11 +25,9 @@
     }
     .sidebar a:hover { background: #0056b3; }
 
-    /* Conteúdo */
     .content { margin-left: 220px; padding: 2rem; width: calc(100% - 220px); }
     h1 { margin-bottom: 1rem; }
 
-    /* Formulário */
     .venda-form {
       background: white;
       padding: 20px;
@@ -45,7 +42,6 @@
       width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;
     }
 
-    /* Botões */
     .btn { padding: 8px 14px; border-radius: 5px; cursor: pointer; border: none; font-size: 1rem; }
     .btn-success { background: #28a745; color: white; }
     .btn-success:hover { background: #218838; }
@@ -54,7 +50,6 @@
     .btn-remove { background: #dc3545; color: white; }
     .btn-remove:hover { background: #c82333; }
 
-    /* Itens */
     .item-row {
       display: flex;
       gap: 10px;
@@ -63,7 +58,6 @@
     }
     .item-row .form-group { flex-grow: 1; }
 
-    /* Cabeçalho alinhado com as caixas */
     .item-header {
       display: flex;
       gap: 10px;
@@ -71,23 +65,16 @@
       margin-bottom: 5px;
     }
 
-    /* Empurra os textos do cabeçalho levemente para a direita
-      p/ ficarem exatamente acima das caixas */
     .item-header > div { padding-left: 6px; }
-
-    /* Mesmas larguras das colunas dos inputs */
-    .item-header > div:first-child { flex: 1; }     /* Produto */
-    .item-header > div:nth-child(2) { width: 100px; }  /* Qtd */
-    .item-header > div:nth-child(3) { width: 120px; }  /* Unitário */
-    .item-header > div:nth-child(4) { width: 120px; }  /* Total */
-    .item-header > div:nth-child(5) { width: 90px; }   /* Botão */
-
-    /* Mantém o botão com largura fixa para não “empurrar” as colunas */
+    .item-header > div:first-child { flex: 1; }
+    .item-header > div:nth-child(2) { width: 100px; }
+    .item-header > div:nth-child(3) { width: 120px; }
+    .item-header > div:nth-child(4) { width: 120px; }
+    .item-header > div:nth-child(5) { width: 90px; }
     .item-row .btn-remove { width: 90px; }
   </style>
 </head>
 <body>
-  <!-- Sidebar -->
   <div class="sidebar">
     <h2>Agrovale</h2>
     <a href="/dashboard">🏠 Início</a>
@@ -98,13 +85,11 @@
     <a href="/logout">🚪 Sair</a>
   </div>
 
-  <!-- Conteúdo -->
   <div class="content">
     <h1>Nova Venda</h1>
     <div class="venda-form">
       <form action="/vendas/criar" method="POST">
-        
-        <!-- Cliente -->
+
         <div class="form-group">
           <label for="cliente">Cliente:</label>
           <select id="cliente" name="clienteId" required>
@@ -115,7 +100,6 @@
           </select>
         </div>
 
-        <!-- Forma de Pagamento -->
         <div class="form-group">
           <label for="forma_pagamento">Forma de Pagamento:</label>
           <select id="forma_pagamento" name="formaPagamentoId" required>
@@ -126,7 +110,6 @@
           </select>
         </div>
 
-        <!-- Itens -->
         <h3>Itens da Venda</h3>
         <div class="item-header">
           <div>Produto</div>
@@ -161,7 +144,6 @@
         </div>
         <button type="button" class="btn btn-secondary" id="add-item">Adicionar Item</button>
 
-        <!-- Resumo -->
         <h3 style="margin-top: 20px;">Resumo da Venda</h3>
         <div class="form-group">
           <label for="valor_bruto">Valor Bruto:</label>
@@ -266,7 +248,6 @@
         <button type="button" class="btn btn-remove">Remover</button>
       `;
 
-      // adicionar listeners
       const select = row.querySelector('.produto-select');
       const qty = row.querySelector(`#quantidade-${index}`);
       const btnRemove = row.querySelector('.btn-remove');
@@ -279,7 +260,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // primeira linha
       const firstSelect = document.querySelector('.produto-select');
       const firstQty = document.querySelector('#quantidade-0');
       const firstRemove = document.querySelector('.item-row .btn-remove');
@@ -288,10 +268,8 @@
       if (firstQty) firstQty.addEventListener('input', () => updateTotal(0));
       if (firstRemove) firstRemove.addEventListener('click', (e) => { e.target.closest('.item-row').remove(); updateSummary(); });
 
-      // botão adicionar
       document.getElementById('add-item').addEventListener('click', addItem);
 
-      // desconto
       document.getElementById('desconto').addEventListener('input', updateSummary);
     });
   </script>

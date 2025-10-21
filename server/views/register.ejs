@@ -110,7 +110,7 @@
 
     form.addEventListener("submit", function(event) {
       if (senha.value !== confirmarSenha.value) {
-        event.preventDefault(); // impede envio
+        event.preventDefault();
         senhaErro.style.display = "block";
         confirmarSenha.classList.add("is-invalid");
       } else {

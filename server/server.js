@@ -10,10 +10,8 @@ const routes = require('./routes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware para servir a pasta "public"
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configurações da view engine EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -43,11 +41,9 @@ app.use(
   })
 );
 
-
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Configuração da sessão
 const sessionStoreOptions = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
@@ -64,14 +60,12 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 1000 * 60 * 60 * 4 // 4h
+    maxAge: 1000 * 60 * 60 * 4
   }
 }));
 
-// Rotas
 app.use('/', routes);
 
-// Inicia servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
 });

@@ -12,7 +12,6 @@
       display: flex;
     }
 
-    /* MENU LATERAL */
     .sidebar {
       width: 220px;
       background: #007bff;
@@ -45,7 +44,6 @@
       border-radius: 4px;
     }
 
-    /* CONTEÚDO */
     .content {
       margin-left: 220px;
       width: 100%;
@@ -122,7 +120,6 @@
       margin-bottom: 1rem;
     }
 
-    /* Banner de modo admin/vendedor */
     .banner {
       width: 80%;
       margin: 20px auto;
@@ -144,7 +141,6 @@
   </style>
 </head>
 <body>
-  <!-- MENU LATERAL -->
   <div class="sidebar">
     <h2>Agrovale</h2>
       <ul>
@@ -157,7 +153,6 @@
       </ul>
   </div>
 
-  <!-- CONTEÚDO PRINCIPAL -->
   <div class="content">
     <header>
       <h1>Dashboard</h1>
@@ -166,7 +161,6 @@
       </div>
     </header>
 
-    <!-- Banner modo admin/vendedor -->
     <% if (user && user.role === 'admin') { %>
       <div class="banner admin-banner">
         🛡️ Você está em <strong>Modo Administrador</strong> — visualizando todas as vendas e estatísticas.
@@ -181,7 +175,6 @@
       <div class="error"><%= error %></div>
     <% } %>
 
-    <!-- Cards -->
     <div class="cards">
       <div class="card">
         <h3>Clientes</h3>
