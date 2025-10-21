@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title><%= usuario ? 'Editar' : 'Novo' %> Usuário</title></head>
+<body>
+  <h1><%= usuario ? 'Editar' : 'Novo' %> Usuário</h1>
+
+  <% if (error) { %><p style="color:red"><%= error %></p><% } %>
+
+  <form action="<%= usuario ? '/admin/usuarios/' + usuario.UsuarioID : '/admin/usuarios' %>" method="post">
+    <label>Nome: <input name="Nome" value="<%= usuario ? usuario.Nome : '' %>" required></label><br>
+    <label>Usuário: <input name="NomeUsuario" value="<%= usuario ? usuario.NomeUsuario : '' %>" required></label><br>
+    <label>Email: <input name="Email" value="<%= usuario ? (usuario.Email || '') : '' %>"></label><br>
+    <label>Telefone: <input name="Telefone" value="<%= usuario ? (usuario.Telefone || '') : '' %>"></label><br>
+    <label>CPF: <input name="CPF" value="<%= usuario ? (usuario.CPF || '') : '' %>"></label><br>
+
+    <% if (!usuario) { %>
+      <label>Senha: <input type="password" name="Senha" required></label><br>
+    <% } else { %>
+      <label>Nova Senha: <input type="password" name="NovaSenha" placeholder="(deixe em branco para manter)"></label><br>
+    <% } %>
+
+    <label>Role:
+      <select name="Role">
+        <option value="user" <%= usuario && usuario.Role==='user' ? 'selected' : '' %>>user</option>
+        <option value="admin" <%= usuario && usuario.Role==='admin' ? 'selected' : '' %>>admin</option>
+      </select>
+    </label><br>
+
+    <label>Ativo:
+      <input type="checkbox" name="Ativo" value="1" <%= !usuario || usuario.Ativo ? 'checked' : '' %>>
+    </label><br>
+
+    <button type="submit">Salvar</button>
+    <a href="/admin/usuarios">Cancelar</a>
+  </form>
+</body>
+</html>

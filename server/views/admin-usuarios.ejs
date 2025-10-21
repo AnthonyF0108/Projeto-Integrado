@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Usuários</title></head>
+<body>
+  <h1>Usuários</h1>
+  <a href="/admin/usuarios/novo">+ Novo Usuário</a>
+  <table border="1" cellpadding="6">
+    <thead>
+      <tr>
+        <th>ID</th><th>Nome</th><th>Usuário</th><th>Email</th><th>Role</th><th>Ativo</th><th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% usuarios.forEach(u => { %>
+        <tr>
+          <td><%= u.UsuarioID %></td>
+          <td><%= u.Nome %></td>
+          <td><%= u.NomeUsuario %></td>
+          <td><%= u.Email || '' %></td>
+          <td><%= u.Role %></td>
+          <td><%= u.Ativo ? 'Sim' : 'Não' %></td>
+          <td>
+            <a href="/admin/usuarios/<%= u.UsuarioID %>/editar">Editar</a>
+            <form action="/admin/usuarios/<%= u.UsuarioID %>/excluir" method="post" style="display:inline" onsubmit="return confirm('Excluir?')">
+              <button type="submit">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</body>
+</html>

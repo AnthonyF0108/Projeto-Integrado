@@ -1,219 +1,83 @@
+// ================================================
+//  ARQUIVO: index.js
+//  Controle de rotas principal do sistema AGROVALE
+//  (corrigido para permitir que admin veja tudo)
+// ================================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const auth = require('./auth');
+const adminUsuarios = require('./admin.usuarios');
 
+// Rotas de autenticação e admin
 router.use('/', auth);
+router.use('/admin/usuarios', adminUsuarios);
 
+// Redirecionamento padrão
 router.get('/', (req, res) => {
-  if (req.session && req.session.user) {
-    return res.redirect('/dashboard');
-  }
+  if (req.session && req.session.user) return res.redirect('/dashboard');
   res.redirect('/login');
 });
 
+// ================================================
+// DASHBOARD
+// ================================================
 router.get('/dashboard', async (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
+  if (!req.session || !req.session.user) {
+    return res.redirect('/login');
+  }
+
+  const { id: userId, role } = req.session.user;
+  const isAdmin = role === 'admin';
 
   try {
-    const userId = req.session.user.id;
+    // Se for admin → vê tudo; senão → apenas suas vendas
+    const whereUser = isAdmin ? '' : 'WHERE v.UsuarioID = ?';
+    const params = isAdmin ? [] : [userId];
 
+    // Buscar dados principais
     const [vendasRows] = await pool.query(`
       SELECT 
-        v.VendaID, 
-        v.NumeroPedido, 
-        v.DataVenda, 
-        v.ValorBruto, 
-        v.Desconto, 
-        v.ValorLiquido, 
-        v.Status,
-        u.UsuarioID AS VendedorID,
+        v.VendaID, v.NumeroPedido, v.DataVenda,
+        v.ValorBruto, v.Desconto, v.ValorLiquido, v.Status,
         u.Nome AS VendedorNome
       FROM Venda v
       INNER JOIN Usuarios u ON v.UsuarioID = u.UsuarioID
-      WHERE v.UsuarioID = ?
-    `, [userId]);
+      ${whereUser}
+      ORDER BY v.DataVenda DESC
+      LIMIT 20
+    `, params);
 
-    const vendas = vendasRows.map(v => ({
-      ...v,
-      ValorBruto: parseFloat(v.ValorBruto),
-      Desconto: parseFloat(v.Desconto),
-      ValorLiquido: parseFloat(v.ValorLiquido)
-    }));
-
-    const [[{ totalClientes }]] = await pool.query(`SELECT COUNT(*) AS totalClientes FROM Cliente`);
-
-    const [[{ estoqueBaixo }]] = await pool.query(`
-      SELECT COUNT(*) AS estoqueBaixo 
-      FROM Produto 
-      WHERE EstoqueAtual < EstoqueMinimo
-    `);
-
-    const [[{ totalVendas }]] = await pool.query(
-      `SELECT COUNT(*) AS totalVendas FROM Venda WHERE UsuarioID = ?`,
-      [userId]
+    const [[totalVendasRow]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM Venda v ${whereUser}`,
+      params
     );
 
-    const [[{ totalValor }]] = await pool.query(
-      `SELECT IFNULL(SUM(ValorLiquido),0) AS totalValor FROM Venda WHERE UsuarioID = ?`,
-      [userId]
+    const [[totalValorRow]] = await pool.query(
+      `SELECT SUM(v.ValorLiquido) AS total FROM Venda v ${whereUser}`,
+      params
     );
 
-    res.render('dashboard', { 
-      user: req.session.user, 
-      vendas, 
-      totalClientes: Number(totalClientes) || 0, 
-      estoqueBaixo: Number(estoqueBaixo) || 0, 
-      totalVendas: Number(totalVendas) || 0, 
-      totalValor: parseFloat(totalValor) || 0,
-      error: null 
+    const [[totalClientesRow]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM Cliente`
+    );
+
+    const [[estoqueBaixoRow]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM Produto WHERE EstoqueAtual < EstoqueMinimo`
+    );
+
+    res.render('dashboard', {
+      user: req.session.user,
+      totalVendas: Number(totalVendasRow.total || 0),
+      totalValor: parseFloat(totalValorRow.total || 0),
+      totalClientes: Number(totalClientesRow.total || 0),
+      estoqueBaixo: Number(estoqueBaixoRow.total || 0),
+      vendas: vendasRows,
+      isAdmin, // <-- ESSENCIAL para o EJS saber o modo
     });
-
   } catch (err) {
-    console.error(err);
-    res.render('dashboard', { 
-      user: req.session.user, 
-      vendas: [], 
-      totalClientes: 0, 
-      estoqueBaixo: 0, 
-      totalVendas: 0, 
-      totalValor: 0, 
-      error: 'Erro ao carregar dashboard' 
-    });
-  }
-});
-
-// Rotas de Produtos
-router.get("/produtos", async (req, res) => {
-  try {
-    const [rows] = await pool.query(`
-      SELECT 
-        ProdutoID AS codigo_interno,
-        Codigo AS codigo_externo,
-        Nome AS nome_produto,
-        PrecoVenda AS valor_venda_vista,
-        (PrecoVenda * 1.10) AS valor_venda_prazo,
-        EstoqueAtual AS quantidade_estoque
-      FROM Produto
-      ORDER BY Nome
-    `);
-    
-    const produtos = rows.map(p => ({
-      ...p,
-      valor_venda_vista: parseFloat(p.valor_venda_vista),
-      valor_venda_prazo: parseFloat(p.valor_venda_prazo)
-    }));
-
-    res.render("produtos", { produtos: produtos });
-  } catch (err) {
-    console.error("Erro ao buscar produtos:", err);
-    res.status(500).send("Erro ao buscar produtos: " + err.message);
-  }
-});
-
-// Rota para exibir o formulário de novo produto
-router.get("/produtos/criar", (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  res.render("produto-form", { produto: null, title: 'Novo Produto' });
-});
-
-// Rota para processar a criação de um novo produto
-router.post("/produtos/criar", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  try {
-    const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
-    
-    // Cálculo do preço de venda com base na margem de lucro
-    const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
-
-    await pool.query(
-      `INSERT INTO Produto (Codigo, Nome, Categoria, Subcategoria, PrecoCusto, PrecoVenda, UnidadeMedida, EstoqueAtual, EstoqueMinimo, FornecedorID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id]
-    );
-
-    res.redirect('/produtos');
-  } catch (err) {
-    console.error("Erro ao criar produto:", err);
-    res.status(500).send("Erro ao criar produto: " + err.message);
-  }
-});
-
-// Rota para exibir o formulário de edição de produto (pré-preenchido)
-router.get("/produtos/alterar/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  try {
-    const produtoId = req.params.id;
-    const [rows] = await pool.query(`SELECT * FROM Produto WHERE ProdutoID = ?`, [produtoId]);
-
-    if (rows.length === 0) {
-      return res.status(404).send('Produto não encontrado');
-    }
-
-    const produto = rows[0];
-    
-    // Calcula a margem de lucro
-    if (produto.PrecoCusto > 0) {
-        produto.margem_lucro = ((parseFloat(produto.PrecoVenda) - parseFloat(produto.PrecoCusto)) / parseFloat(produto.PrecoCusto)) * 100;
-    } else {
-        produto.margem_lucro = 0; // Evita divisão por zero
-    }
-    
-    // Limita o valor a duas casas decimais
-    produto.margem_lucro = produto.margem_lucro.toFixed(2);
-    
-    res.render("produto-form", { produto: produto, title: 'Alterar Produto' });
-  } catch (err) {
-    console.error("Erro ao buscar produto para alteração:", err);
-    res.status(500).send("Erro ao buscar produto: " + err.message);
-  }
-});
-
-// Rota para processar a alteração de um produto
-router.post("/produtos/alterar/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  try {
-    const produtoId = req.params.id;
-    const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
-    
-    // Cálculo do preço de venda com base na margem de lucro
-    const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
-    
-    await pool.query(
-      `UPDATE Produto SET Codigo = ?, Nome = ?, Categoria = ?, Subcategoria = ?, PrecoCusto = ?, PrecoVenda = ?, UnidadeMedida = ?, EstoqueAtual = ?, EstoqueMinimo = ?, FornecedorID = ? WHERE ProdutoID = ?`,
-      [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id, produtoId]
-    );
-
-    res.redirect('/produtos');
-  } catch (err) {
-    console.error("Erro ao alterar produto:", err);
-    res.status(500).send("Erro ao alterar produto: " + err.message);
-  }
-});
-
-// Rota para excluir um produto
-router.post("/produtos/excluir/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  try {
-    const produtoId = req.params.id;
-    await pool.query(`DELETE FROM Produto WHERE ProdutoID = ?`, [produtoId]);
-    res.redirect('/produtos');
-  } catch (err) {
-    console.error("Erro ao excluir produto:", err);
-    res.status(500).send("Erro ao excluir produto: " + err.message);
-  }
-});
-
-router.get("/vendas", async (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  try {
-    const [clientes] = await pool.query('SELECT ClienteID, Nome, CPF_CNPJ FROM Cliente ORDER BY Nome');
-    const [produtos] = await pool.query('SELECT ProdutoID, Nome, PrecoVenda, UnidadeMedida FROM Produto WHERE Ativo = 1 ORDER BY Nome');
-    const [formasPagamento] = await pool.query('SELECT PagamentoID, Nome FROM FormaPagamento ORDER BY Nome');
-    
-    res.render("vendas", { clientes, produtos, formasPagamento });
-  } catch (err) {
-    console.error("Erro ao carregar dados para a página de vendas:", err);
-    res.status(500).send("Erro ao carregar página de vendas: " + err.message);
+    console.error('Erro no dashboard:', err);
+    res.status(500).send('Erro ao carregar dashboard');
   }
 });
 
@@ -304,42 +168,52 @@ router.post("/vendas/criar", async (req, res) => {
 
 });
 
-// =========================
-// Estatísticas
-// =========================
-router.get("/estatisticas", async (req, res) => {
+router.get("/vendas", async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
   try {
-    const userId = req.session.user.id;
+    const [clientes] = await pool.query('SELECT ClienteID, Nome, CPF_CNPJ FROM Cliente ORDER BY Nome');
+    const [produtos] = await pool.query('SELECT ProdutoID, Nome, PrecoVenda, UnidadeMedida FROM Produto WHERE Ativo = 1 ORDER BY Nome');
+    const [formasPagamento] = await pool.query('SELECT PagamentoID, Nome FROM FormaPagamento ORDER BY Nome');
+    
+    res.render("vendas", { clientes, produtos, formasPagamento });
+  } catch (err) {
+    console.error("Erro ao carregar dados para a página de vendas:", err);
+    res.status(500).send("Erro ao carregar página de vendas: " + err.message);
+  }
+});
 
-    // Total de vendas do usuário
-    const [[{ totalVendas }]] = await pool.query(
-      `SELECT COUNT(*) AS totalVendas FROM Venda WHERE UsuarioID = ?`,
-      [userId]
-    );
+// ================================================
+// ESTATÍSTICAS
+// ================================================
+router.get("/estatisticas", async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+  
+  const { id: userId, role } = req.session.user;
+  const isAdmin = role === 'admin';
 
-    // Valor total vendido
-    const [[{ totalValor }]] = await pool.query(
-      `SELECT IFNULL(SUM(ValorLiquido),0) AS totalValor FROM Venda WHERE UsuarioID = ?`,
-      [userId]
-    );
+  try {
+    const whereUser = isAdmin ? '' : 'WHERE v.UsuarioID = ?';
+    const params = isAdmin ? [] : [userId];
 
-    // Top 5 produtos mais vendidos
-    const [topProdutos] = await pool.query(
-      `SELECT p.Nome AS nome_produto, SUM(iv.Quantidade) AS qtd
-       FROM ItemVenda iv
-       INNER JOIN Produto p ON iv.ProdutoID = p.ProdutoID
-       INNER JOIN Venda v ON iv.VendaID = v.VendaID
-       WHERE v.UsuarioID = ?
-       GROUP BY p.ProdutoID
-       ORDER BY qtd DESC
-       LIMIT 5`,
-      [userId]
-    );
+    // Totais
+    const [[totalVendasRow]] = await pool.query(`SELECT COUNT(*) AS totalVendas FROM Venda v ${whereUser}`, params);
+    const [[totalValorRow]]  = await pool.query(`SELECT IFNULL(SUM(v.ValorLiquido), 0) AS totalValor FROM Venda v ${whereUser}`, params);
+
+    // Top produtos
+    const [topProdutos] = await pool.query(`
+      SELECT p.Nome AS nome_produto, SUM(iv.Quantidade) AS qtd
+      FROM ItemVenda iv
+      INNER JOIN Produto p ON iv.ProdutoID = p.ProdutoID
+      INNER JOIN Venda v ON iv.VendaID = v.VendaID
+      ${whereUser}
+      GROUP BY p.ProdutoID
+      ORDER BY qtd DESC
+      LIMIT 5
+    `, params);
 
     res.render("estatisticas", { 
-      totalVendas: Number(totalVendas) || 0,
-      totalValor: parseFloat(totalValor) || 0,
+      totalVendas: Number(totalVendasRow.totalVendas || 0),
+      totalValor: parseFloat(totalValorRow.totalValor || 0),
       topProdutos: topProdutos || []
     });
   } catch (err) {
@@ -348,11 +222,113 @@ router.get("/estatisticas", async (req, res) => {
   }
 });
 
-// =========================
-// Clientes
-// =========================
+// ================================================
+// PRODUTOS
+// ================================================
+router.get("/produtos", async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        ProdutoID AS codigo_interno,
+        Codigo AS codigo_externo,
+        Nome AS nome_produto,
+        PrecoVenda AS valor_venda_vista,
+        (PrecoVenda * 1.10) AS valor_venda_prazo,
+        EstoqueAtual AS quantidade_estoque
+      FROM Produto
+      ORDER BY Nome
+    `);
+    
+    const produtos = rows.map(p => ({
+      ...p,
+      valor_venda_vista: parseFloat(p.valor_venda_vista),
+      valor_venda_prazo: parseFloat(p.valor_venda_prazo)
+    }));
 
-// Listar clientes
+    res.render("produtos", { produtos });
+  } catch (err) {
+    console.error("Erro ao buscar produtos:", err);
+    res.status(500).send("Erro ao buscar produtos: " + err.message);
+  }
+});
+
+router.get("/produtos/criar", (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+  res.render("produto-form", { produto: null, title: 'Novo Produto' });
+});
+
+router.post("/produtos/criar", async (req, res) => {
+  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  try {
+    const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
+    const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
+
+    await pool.query(
+      `INSERT INTO Produto (Codigo, Nome, Categoria, Subcategoria, PrecoCusto, PrecoVenda, UnidadeMedida, EstoqueAtual, EstoqueMinimo, FornecedorID) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id]
+    );
+
+    res.redirect('/produtos');
+  } catch (err) {
+    console.error("Erro ao criar produto:", err);
+    res.status(500).send("Erro ao criar produto: " + err.message);
+  }
+});
+
+router.get("/produtos/alterar/:id", async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+  try {
+    const produtoId = req.params.id;
+    const [rows] = await pool.query(`SELECT * FROM Produto WHERE ProdutoID = ?`, [produtoId]);
+    if (rows.length === 0) return res.status(404).send('Produto não encontrado');
+
+    const produto = rows[0];
+    produto.margem_lucro = produto.PrecoCusto > 0
+      ? (((produto.PrecoVenda - produto.PrecoCusto) / produto.PrecoCusto) * 100).toFixed(2)
+      : 0;
+
+    res.render("produto-form", { produto, title: 'Alterar Produto' });
+  } catch (err) {
+    console.error("Erro ao buscar produto:", err);
+    res.status(500).send("Erro ao buscar produto: " + err.message);
+  }
+});
+
+router.post("/produtos/alterar/:id", async (req, res) => {
+  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  try {
+    const produtoId = req.params.id;
+    const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
+    const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
+
+    await pool.query(
+      `UPDATE Produto SET Codigo=?, Nome=?, Categoria=?, Subcategoria=?, PrecoCusto=?, PrecoVenda=?, UnidadeMedida=?, EstoqueAtual=?, EstoqueMinimo=?, FornecedorID=? WHERE ProdutoID=?`,
+      [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id, produtoId]
+    );
+
+    res.redirect('/produtos');
+  } catch (err) {
+    console.error("Erro ao alterar produto:", err);
+    res.status(500).send("Erro ao alterar produto: " + err.message);
+  }
+});
+
+router.post("/produtos/excluir/:id", async (req, res) => {
+  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  try {
+    const produtoId = req.params.id;
+    await pool.query(`DELETE FROM Produto WHERE ProdutoID = ?`, [produtoId]);
+    res.redirect('/produtos');
+  } catch (err) {
+    console.error("Erro ao excluir produto:", err);
+    res.status(500).send("Erro ao excluir produto: " + err.message);
+  }
+});
+
+// ================================================
+// CLIENTES
+// ================================================
 router.get("/clientes", async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
   try {
@@ -368,78 +344,7 @@ router.get("/clientes", async (req, res) => {
   }
 });
 
-// Exibir formulário de novo cliente
-router.get("/clientes/novo", (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  res.render("clientes-form", { cliente: null, title: 'Novo Cliente' });
-});
-
-// Processar criação de cliente
-router.post("/clientes/novo", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  try {
-    const { nome, cpf_cnpj, email, telefone, endereco } = req.body;
-
-    await pool.query(
-      `INSERT INTO Cliente (Nome, CPF_CNPJ, Email, Telefone, Endereco) VALUES (?, ?, ?, ?, ?)`,
-      [nome, cpf_cnpj, email, telefone, endereco]
-    );
-
-    res.redirect('/clientes');
-  } catch (err) {
-    console.error("Erro ao criar cliente:", err);
-    res.status(500).send("Erro ao criar cliente: " + err.message);
-  }
-});
-
-// Exibir formulário de edição
-router.get("/clientes/alterar/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  try {
-    const clienteId = req.params.id;
-    const [rows] = await pool.query(`SELECT * FROM Cliente WHERE ClienteID = ?`, [clienteId]);
-
-    if (rows.length === 0) {
-      return res.status(404).send('Cliente não encontrado');
-    }
-
-    res.render("clientes-form", { cliente: rows[0], title: 'Alterar Cliente' });
-  } catch (err) {
-    console.error("Erro ao buscar cliente:", err);
-    res.status(500).send("Erro ao buscar cliente: " + err.message);
-  }
-});
-
-// Processar edição
-router.post("/clientes/alterar/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  try {
-    const clienteId = req.params.id;
-    const { nome, cpf_cnpj, email, telefone, endereco } = req.body;
-
-    await pool.query(
-      `UPDATE Cliente SET Nome = ?, CPF_CNPJ = ?, Email = ?, Telefone = ?, Endereco = ? WHERE ClienteID = ?`,
-      [nome, cpf_cnpj, email, telefone, endereco, clienteId]
-    );
-
-    res.redirect('/clientes');
-  } catch (err) {
-    console.error("Erro ao alterar cliente:", err);
-    res.status(500).send("Erro ao alterar cliente: " + err.message);
-  }
-});
-
-// Excluir cliente
-router.post("/clientes/excluir/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  try {
-    const clienteId = req.params.id;
-    await pool.query(`DELETE FROM Cliente WHERE ClienteID = ?`, [clienteId]);
-    res.redirect('/clientes');
-  } catch (err) {
-    console.error("Erro ao excluir cliente:", err);
-    res.status(500).send("Erro ao excluir cliente: " + err.message);
-  }
-});
-
+// ================================================
+// EXPORT
+// ================================================
 module.exports = router;

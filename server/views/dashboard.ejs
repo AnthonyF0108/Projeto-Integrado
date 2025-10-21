@@ -121,6 +121,26 @@
       color: red;
       margin-bottom: 1rem;
     }
+
+    /* Banner de modo admin/vendedor */
+    .banner {
+      width: 80%;
+      margin: 20px auto;
+      text-align: center;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-weight: bold;
+    }
+    .admin-banner {
+      background: linear-gradient(90deg, #1f8ef1, #007bff);
+      color: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+    .user-banner {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      color: #555;
+    }
   </style>
 </head>
 <body>
@@ -142,9 +162,20 @@
     <header>
       <h1>Dashboard</h1>
       <div>
-        <span>Usuário: <strong><%= user.nome %></strong></span>
+        <span>👋 Olá, <strong><%= user.nome %></strong></span>
       </div>
     </header>
+
+    <!-- Banner modo admin/vendedor -->
+    <% if (user && user.role === 'admin') { %>
+      <div class="banner admin-banner">
+        🛡️ Você está em <strong>Modo Administrador</strong> — visualizando todas as vendas e estatísticas.
+      </div>
+    <% } else if (user && user.role === 'user') { %>
+      <div class="banner user-banner">
+        👤 Modo Vendedor — exibindo apenas suas próprias vendas.
+      </div>
+    <% } %>
 
     <% if (typeof error !== 'undefined' && error) { %>
       <div class="error"><%= error %></div>
@@ -166,11 +197,11 @@
       </div>
       <div class="card">
         <h3>Valor Vendido</h3>
-        <p>R$ <%= totalValor.toFixed(2) %></p>
+        <p>R$ <%= parseFloat(totalValor || 0).toFixed(2) %></p>
       </div>
     </div>
 
-    <h2>Minhas Vendas</h2>
+    <h2>Últimas Vendas</h2>
     <table>
       <thead>
         <tr>
@@ -181,21 +212,23 @@
           <th>Desconto</th>
           <th>Valor Líquido</th>
           <th>Status</th>
+          <th>Vendedor</th>
         </tr>
       </thead>
       <tbody>
         <% if (vendas.length === 0) { %>
-          <tr><td colspan="7" style="text-align:center;">Nenhuma venda registrada</td></tr>
+          <tr><td colspan="8" style="text-align:center;">Nenhuma venda registrada</td></tr>
         <% } else { %>
           <% vendas.forEach(v => { %>
             <tr>
               <td><%= v.VendaID %></td>
-              <td><%= v.NumeroPedido %></td>
+              <td><%= v.NumeroPedido || '-' %></td>
               <td><%= new Date(v.DataVenda).toLocaleString('pt-BR') %></td>
-              <td>R$ <%= v.ValorBruto.toFixed(2) %></td>
-              <td>R$ <%= v.Desconto.toFixed(2) %></td>
-              <td>R$ <%= v.ValorLiquido.toFixed(2) %></td>
+              <td>R$ <%= parseFloat(v.ValorBruto || 0).toFixed(2) %></td>
+              <td>R$ <%= parseFloat(v.Desconto || 0).toFixed(2) %></td>
+              <td>R$ <%= parseFloat(v.ValorLiquido || 0).toFixed(2) %></td>
               <td><%= v.Status %></td>
+              <td><%= v.VendedorNome %></td>
             </tr>
           <% }) %>
         <% } %>
