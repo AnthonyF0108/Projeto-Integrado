@@ -141,6 +141,49 @@
   </style>
 </head>
 <body>
+  <% if (typeof flashMessage !== 'undefined' && flashMessage) { %>
+    <div id="flash-msg" class="flash <%= flashMessage.tipo %>">
+      <%= flashMessage.texto %>
+    </div>
+
+    <script>
+      const msg = document.getElementById('flash-msg');
+      if (msg) {
+        setTimeout(() => {
+          msg.style.opacity = '0';
+          msg.style.transform = 'translateY(-20px)';
+          msg.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+        }, 4000);
+
+        setTimeout(() => msg.remove(), 5000);
+      }
+    </script>
+
+    <style>
+      .flash {
+        position: fixed;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        padding: 14px 22px;
+        border-radius: 6px;
+        color: white;
+        font-weight: bold;
+        font-size: 1rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        animation: slideDown 0.5s ease-out;
+      }
+      .flash.sucesso { background-color: #28a745; }
+      .flash.erro { background-color: #dc3545; }
+      .flash.info { background-color: #007bff; }
+
+      @keyframes slideDown {
+        from { transform: translate(-50%, -30px); opacity: 0; }
+        to { transform: translate(-50%, 0); opacity: 1; }
+      }
+    </style>
+  <% } %>
   <div class="sidebar">
     <h2>Agrovale</h2>
       <ul>
@@ -149,6 +192,7 @@
         <li><a href="/vendas">💰 Vendas</a></li>
         <li><a href="/estatisticas">📊 Estatísticas</a></li>
         <li><a href="/clientes">👤 Clientes</a></li>
+        <li><a href="/relatorios/auditoria">🧾 Log de Auditoria</a></li>
         <li><a href="/logout">🚪 Sair</a></li>
       </ul>
   </div>

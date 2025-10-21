@@ -168,6 +168,20 @@ CREATE TABLE HistoricoStatusVenda (
 );
 
 -- ===============================
+-- TABELA: LogAuditoria
+-- ===============================
+CREATE TABLE LogAuditoria (
+    LogID INT PRIMARY KEY AUTO_INCREMENT,
+    UsuarioID INT NOT NULL,
+    Acao VARCHAR(100) NOT NULL,
+    TabelaAfetada VARCHAR(50) NOT NULL,
+    RegistroID INT,
+    Descricao TEXT,
+    DataHora DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (UsuarioID) REFERENCES Usuarios(UsuarioID)
+);
+
+-- ===============================
 -- DADOS EXEMPLO
 -- ===============================
 INSERT INTO Cliente (Nome, Tipo, CPF_CNPJ, Email, Telefone, Endereco, Cidade, Estado)

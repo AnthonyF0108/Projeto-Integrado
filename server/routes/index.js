@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db');
 const auth = require('./auth');
 const adminUsuarios = require('./admin.usuarios');
+const { registrarLog } = require('../utils/logHelper');
 
 router.use('/', auth);
 router.use('/admin/usuarios', adminUsuarios);
@@ -57,6 +58,9 @@ router.get('/dashboard', async (req, res) => {
       `SELECT COUNT(*) AS total FROM Produto WHERE EstoqueAtual < EstoqueMinimo`
     );
 
+    const flashMessage = req.session.flashMessage;
+    req.session.flashMessage = null;
+
     res.render('dashboard', {
       user: req.session.user,
       totalVendas: Number(totalVendasRow.total || 0),
@@ -65,7 +69,11 @@ router.get('/dashboard', async (req, res) => {
       estoqueBaixo: Number(estoqueBaixoRow.total || 0),
       vendas: vendasRows,
       isAdmin,
+      flashMessage
     });
+
+    req.session.flashMessage = null;
+
   } catch (err) {
     console.error('Erro no dashboard:', err);
     res.status(500).send('Erro ao carregar dashboard');
@@ -241,14 +249,25 @@ router.get("/produtos/criar", (req, res) => {
 
 router.post("/produtos/criar", async (req, res) => {
   if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  
   try {
     const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
     const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
 
-    await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO Produto (Codigo, Nome, Categoria, Subcategoria, PrecoCusto, PrecoVenda, UnidadeMedida, EstoqueAtual, EstoqueMinimo, FornecedorID) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id]
+    );
+
+    const novoProdutoID = result.insertId;
+
+    await registrarLog(
+      req.session.user.id,
+      'Cadastro de Produto',
+      'Produto',
+      novoProdutoID,
+      `Produto "${nome_produto}" criado por ${req.session.user.nome}`
     );
 
     res.redirect('/produtos');
@@ -260,6 +279,7 @@ router.post("/produtos/criar", async (req, res) => {
 
 router.get("/produtos/alterar/:id", async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
+  
   try {
     const produtoId = req.params.id;
     const [rows] = await pool.query(`SELECT * FROM Produto WHERE ProdutoID = ?`, [produtoId]);
@@ -279,14 +299,25 @@ router.get("/produtos/alterar/:id", async (req, res) => {
 
 router.post("/produtos/alterar/:id", async (req, res) => {
   if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  
   try {
     const produtoId = req.params.id;
     const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
     const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
 
     await pool.query(
-      `UPDATE Produto SET Codigo=?, Nome=?, Categoria=?, Subcategoria=?, PrecoCusto=?, PrecoVenda=?, UnidadeMedida=?, EstoqueAtual=?, EstoqueMinimo=?, FornecedorID=? WHERE ProdutoID=?`,
+      `UPDATE Produto 
+       SET Codigo=?, Nome=?, Categoria=?, Subcategoria=?, PrecoCusto=?, PrecoVenda=?, UnidadeMedida=?, EstoqueAtual=?, EstoqueMinimo=?, FornecedorID=? 
+       WHERE ProdutoID=?`,
       [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id, produtoId]
+    );
+
+    await registrarLog(
+      req.session.user.id,
+      'Atualização de Produto',
+      'Produto',
+      produtoId,
+      `Produto "${nome_produto}" alterado por ${req.session.user.nome}`
     );
 
     res.redirect('/produtos');
@@ -298,9 +329,23 @@ router.post("/produtos/alterar/:id", async (req, res) => {
 
 router.post("/produtos/excluir/:id", async (req, res) => {
   if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  
   try {
     const produtoId = req.params.id;
+
+    // 🔎 Busca o nome antes de excluir para salvar no log
+    const [[produto]] = await pool.query(`SELECT Nome FROM Produto WHERE ProdutoID = ?`, [produtoId]);
+
     await pool.query(`DELETE FROM Produto WHERE ProdutoID = ?`, [produtoId]);
+
+    await registrarLog(
+      req.session.user.id,
+      'Exclusão de Produto',
+      'Produto',
+      produtoId,
+      `Produto "${produto ? produto.Nome : produtoId}" excluído por ${req.session.user.nome}`
+    );
+
     res.redirect('/produtos');
   } catch (err) {
     console.error("Erro ao excluir produto:", err);
@@ -311,6 +356,7 @@ router.post("/produtos/excluir/:id", async (req, res) => {
 // ================================================
 // CLIENTES
 // ================================================
+
 router.get("/clientes", async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
   try {
@@ -323,6 +369,188 @@ router.get("/clientes", async (req, res) => {
   } catch (err) {
     console.error("Erro ao buscar clientes:", err);
     res.status(500).send("Erro ao buscar clientes: " + err.message);
+  }
+});
+
+router.get("/clientes/novo", (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+  res.render("clientes-form", { cliente: null, title: 'Novo Cliente' });
+});
+
+router.post("/clientes/novo", async (req, res) => {
+  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  try {
+    const { nome, cpf_cnpj, email, telefone, endereco } = req.body;
+
+    const [result] = await pool.query(
+      `INSERT INTO Cliente (Nome, CPF_CNPJ, Email, Telefone, Endereco)
+       VALUES (?, ?, ?, ?, ?)`,
+      [nome, cpf_cnpj, email, telefone, endereco]
+    );
+
+    await registrarLog(
+      req.session.user.id,
+      'Cadastro de Cliente',
+      'Cliente',
+      result.insertId,
+      `Cliente "${nome}" criado por ${req.session.user.nome}`
+    );
+
+    res.redirect('/clientes');
+  } catch (err) {
+    console.error("Erro ao criar cliente:", err);
+    res.status(500).send("Erro ao criar cliente: " + err.message);
+  }
+});
+
+router.get("/clientes/alterar/:id", async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+  try {
+    const clienteId = req.params.id;
+    const [[cliente]] = await pool.query(
+      `SELECT * FROM Cliente WHERE ClienteID = ?`,
+      [clienteId]
+    );
+
+    if (!cliente) {
+      return res.status(404).send('Cliente não encontrado');
+    }
+
+    res.render("clientes-form", { cliente, title: 'Alterar Cliente' });
+  } catch (err) {
+    console.error("Erro ao buscar cliente:", err);
+    res.status(500).send("Erro ao buscar cliente: " + err.message);
+  }
+});
+
+router.post("/clientes/alterar/:id", async (req, res) => {
+  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  try {
+    const clienteId = req.params.id;
+    const { nome, cpf_cnpj, email, telefone, endereco } = req.body;
+
+    await pool.query(
+      `UPDATE Cliente
+       SET Nome = ?, CPF_CNPJ = ?, Email = ?, Telefone = ?, Endereco = ?
+       WHERE ClienteID = ?`,
+      [nome, cpf_cnpj, email, telefone, endereco, clienteId]
+    );
+
+    await registrarLog(
+      req.session.user.id,
+      'Alteração de Cliente',
+      'Cliente',
+      clienteId,
+      `Cliente "${nome}" alterado por ${req.session.user.nome}`
+    );
+
+    res.redirect('/clientes');
+  } catch (err) {
+    console.error("Erro ao alterar cliente:", err);
+    res.status(500).send("Erro ao alterar cliente: " + err.message);
+  }
+});
+
+router.post("/clientes/excluir/:id", async (req, res) => {
+  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+  try {
+    const clienteId = req.params.id;
+
+    const [[checkVenda]] = await pool.query(
+      `SELECT COUNT(*) AS total FROM Venda WHERE ClienteID = ?`,
+      [clienteId]
+    );
+
+    if (checkVenda.total > 0) {
+      return res.send(`
+        <body style="font-family: Arial; text-align:center; padding-top:50px;">
+          <h3>⚠️ Não é possível excluir este cliente, pois ele possui vendas registradas.</h3>
+          <p><a href="/clientes" style="color: blue; text-decoration: underline;">Voltar à lista de clientes</a></p>
+          <script>
+            setTimeout(() => { window.location.href = '/clientes'; }, 3500);
+          </script>
+        </body>
+      `);
+    }
+
+    const [[cliente]] = await pool.query(`SELECT Nome FROM Cliente WHERE ClienteID = ?`, [clienteId]);
+    await pool.query(`DELETE FROM Cliente WHERE ClienteID = ?`, [clienteId]);
+
+    await registrarLog(
+      req.session.user.id,
+      'Exclusão de Cliente',
+      'Cliente',
+      clienteId,
+      `Cliente "${cliente?.Nome || 'Desconhecido'}" excluído por ${req.session.user.nome}`
+    );
+
+    res.redirect('/clientes');
+  } catch (err) {
+    console.error("Erro ao excluir cliente:", err);
+    res.status(500).send("Erro ao excluir cliente: " + err.message);
+  }
+});
+
+// ================================================
+// RELATÓRIO DE AUDITORIA
+// ================================================
+router.get('/relatorios/auditoria', async (req, res) => {
+  if (!req.session.user || req.session.user.role !== 'admin') {
+    req.session.flashMessage = {
+      tipo: 'erro',
+      texto: 'Acesso negado — apenas administradores podem acessar esta área.'
+    };
+    return res.redirect('/dashboard');
+  }
+
+  try {
+    const { usuario, acao, dataInicio, dataFim } = req.query;
+
+    let whereClause = [];
+    let params = [];
+
+    if (usuario) {
+      whereClause.push('u.Nome LIKE ?');
+      params.push(`%${usuario}%`);
+    }
+
+    if (acao) {
+      whereClause.push('l.Acao = ?');
+      params.push(acao);
+    }
+
+    if (dataInicio) {
+      whereClause.push('DATE(l.DataHora) >= ?');
+      params.push(dataInicio);
+    }
+
+    if (dataFim) {
+      whereClause.push('DATE(l.DataHora) <= ?');
+      params.push(dataFim);
+    }
+
+    const whereSQL = whereClause.length > 0 ? 'WHERE ' + whereClause.join(' AND ') : '';
+
+    const [logs] = await pool.query(`
+      SELECT l.LogID, l.Acao, l.TabelaAfetada, l.RegistroID, l.Descricao, l.DataHora, u.Nome AS Usuario
+      FROM LogAuditoria l
+      INNER JOIN Usuarios u ON l.UsuarioID = u.UsuarioID
+      ${whereSQL}
+      ORDER BY l.DataHora DESC
+    `, params);
+
+    res.render('relatorio-auditoria', {
+      user: req.session.user,
+      logs,
+      filtroUsuario: usuario || '',
+      filtroAcao: acao || '',
+      filtroInicio: dataInicio || '',
+      filtroFim: dataFim || ''
+    });
+
+  } catch (err) {
+    console.error('Erro ao carregar relatório de auditoria:', err);
+    res.status(500).send('Erro ao carregar relatório de auditoria');
   }
 });
 

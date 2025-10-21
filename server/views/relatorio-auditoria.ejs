@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log de Auditoria - Agrovale</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f5f6fa;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #007bff;
+      color: white;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding-top: 1rem;
+    }
+    .sidebar h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+    .sidebar ul li {
+      padding: 1rem;
+    }
+    .sidebar ul li a {
+      color: white;
+      text-decoration: none;
+      display: block;
+      font-weight: bold;
+    }
+    .sidebar ul li a:hover {
+      background: #0056b3;
+      border-radius: 4px;
+    }
+
+    .content {
+      margin-left: 220px;
+      width: 100%;
+      padding: 1rem 2rem;
+    }
+
+    header {
+      background: #007bff;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 6px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    /* Banner */
+    .banner {
+      width: 80%;
+      margin: 20px auto;
+      text-align: center;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-weight: bold;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      color: #555;
+    }
+
+    /* Filtros */
+    .filters {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-top: 1.5rem;
+    }
+
+    .filters input,
+    .filters select,
+    .filters button {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 0.9rem;
+    }
+
+    .filters button {
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .filters button:hover {
+      background: #0056b3;
+    }
+
+    /* Tabela */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+      background: white;
+      border-radius: 5px;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #007bff;
+      color: white;
+    }
+
+    tr:hover {
+      background: #f1f1f1;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Consulta de Produto</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Log de Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <header>
+      <h1>Log de Auditoria</h1>
+      <div>
+        <span>👋 Olá, <strong><%= user.nome %></strong></span>
+      </div>
+    </header>
+
+    <div class="banner">
+      ⚠️ Apenas administradores têm acesso a este relatório.
+    </div>
+
+    <!-- 🔍 FILTROS -->
+    <form class="filters" method="GET" action="/relatorios/auditoria">
+      <div>
+        <label for="usuario">Usuário:</label><br>
+        <input type="text" name="usuario" id="usuario" value="<%= filtroUsuario || '' %>">
+      </div>
+      <div>
+        <label for="acao">Ação:</label><br>
+        <select name="acao" id="acao">
+          <option value="">Todas</option>
+          <option value="Cadastro de Cliente" <%= filtroAcao === 'Cadastro de Cliente' ? 'selected' : '' %>>Cadastro de Cliente</option>
+          <option value="Alteração de Cliente" <%= filtroAcao === 'Alteração de Cliente' ? 'selected' : '' %>>Alteração de Cliente</option>
+          <option value="Exclusão de Cliente" <%= filtroAcao === 'Exclusão de Cliente' ? 'selected' : '' %>>Exclusão de Cliente</option>
+          <option value="Atualização de Produto" <%= filtroAcao === 'Atualização de Produto' ? 'selected' : '' %>>Atualização de Produto</option>
+          <option value="Cadastro de Produto" <%= filtroAcao === 'Cadastro de Produto' ? 'selected' : '' %>>Cadastro de Produto</option>
+          <option value="Exclusão de Produto" <%= filtroAcao === 'Exclusão de Produto' ? 'selected' : '' %>>Exclusão de Produto</option>
+        </select>
+      </div>
+      <div>
+        <label for="dataInicio">De:</label><br>
+        <input type="date" name="dataInicio" id="dataInicio" value="<%= filtroInicio || '' %>">
+      </div>
+      <div>
+        <label for="dataFim">Até:</label><br>
+        <input type="date" name="dataFim" id="dataFim" value="<%= filtroFim || '' %>">
+      </div>
+      <div style="align-self: end;">
+        <button type="submit">Filtrar</button>
+      </div>
+    </form>
+
+    <!-- 📋 TABELA -->
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Usuário</th>
+          <th>Ação</th>
+          <th>Tabela Afetada</th>
+          <th>Registro ID</th>
+          <th>Descrição</th>
+          <th>Data / Hora</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (logs.length === 0) { %>
+          <tr><td colspan="7" style="text-align:center;">Nenhum registro encontrado.</td></tr>
+        <% } else { %>
+          <% logs.forEach(log => { %>
+            <tr>
+              <td><%= log.LogID %></td>
+              <td><%= log.Usuario %></td>
+              <td><%= log.Acao %></td>
+              <td><%= log.TabelaAfetada %></td>
+              <td><%= log.RegistroID %></td>
+              <td><%= log.Descricao %></td>
+              <td><%= new Date(log.DataHora).toLocaleString('pt-BR') %></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
