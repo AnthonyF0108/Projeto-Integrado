@@ -1,19 +1,12 @@
-// ================================================
-//  ARQUIVO: index.js
-//  Controle de rotas principal do sistema AGROVALE
-//  (corrigido para permitir que admin veja tudo)
-// ================================================
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const auth = require('./auth');
 const adminUsuarios = require('./admin.usuarios');
 
-// Rotas de autenticação e admin
 router.use('/', auth);
 router.use('/admin/usuarios', adminUsuarios);
 
-// Redirecionamento padrão
 router.get('/', (req, res) => {
   if (req.session && req.session.user) return res.redirect('/dashboard');
   res.redirect('/login');
@@ -31,11 +24,9 @@ router.get('/dashboard', async (req, res) => {
   const isAdmin = role === 'admin';
 
   try {
-    // Se for admin → vê tudo; senão → apenas suas vendas
     const whereUser = isAdmin ? '' : 'WHERE v.UsuarioID = ?';
     const params = isAdmin ? [] : [userId];
 
-    // Buscar dados principais
     const [vendasRows] = await pool.query(`
       SELECT 
         v.VendaID, v.NumeroPedido, v.DataVenda,
@@ -73,7 +64,7 @@ router.get('/dashboard', async (req, res) => {
       totalClientes: Number(totalClientesRow.total || 0),
       estoqueBaixo: Number(estoqueBaixoRow.total || 0),
       vendas: vendasRows,
-      isAdmin, // <-- ESSENCIAL para o EJS saber o modo
+      isAdmin,
     });
   } catch (err) {
     console.error('Erro no dashboard:', err);
@@ -95,7 +86,6 @@ router.post("/vendas/criar", async (req, res) => {
     const { clienteId, formaPagamentoId, desconto, observacoes, produtos, quantidades } = req.body;
     const userId = req.session.user.id;
     
-    // Obter os produtos e preços do banco
     const produtosIds = produtos.map(id => parseInt(id));
     const [produtosData] = await connection.query(
       `SELECT ProdutoID, PrecoVenda FROM Produto WHERE ProdutoID IN (?)`,
@@ -107,7 +97,6 @@ router.post("/vendas/criar", async (req, res) => {
     
     let valorBruto = 0;
     
-    // Cálculo do valor bruto
     for (let i = 0; i < produtos.length; i++) {
       const produtoId = parseInt(produtos[i]);
       const quantidade = parseFloat(quantidades[i]);
@@ -118,15 +107,12 @@ router.post("/vendas/criar", async (req, res) => {
       }
     }
 
-    // Número do pedido (simples, pode melhorar depois)
     const numeroPedido = `VENDA-${Date.now()}`;
     
-    // 🔹 Cálculo do desconto percentual
     const descontoPerc = parseFloat(desconto) || 0;
     const descontoValor = valorBruto * (descontoPerc / 100);
     const valorLiquido = valorBruto - descontoValor;
     
-    // Inserir a venda principal
     const [vendaResult] = await connection.query(
       `INSERT INTO Venda (
           NumeroPedido, DataVenda, ClienteID, UsuarioID, TempoID, FormaPagamentoID,
@@ -136,7 +122,6 @@ router.post("/vendas/criar", async (req, res) => {
     );
     const vendaId = vendaResult.insertId;
 
-    // Inserir os itens da venda
     for (let i = 0; i < produtos.length; i++) {
       const produtoId = parseInt(produtos[i]);
       const quantidade = parseFloat(quantidades[i]);
@@ -148,7 +133,6 @@ router.post("/vendas/criar", async (req, res) => {
         [vendaId, produtoId, quantidade, precoUnitario, quantidade * precoUnitario]
       );
       
-      // Atualizar o estoque
       await connection.query(
         `UPDATE Produto SET EstoqueAtual = EstoqueAtual - ? WHERE ProdutoID = ?`,
         [quantidade, produtoId]
@@ -195,11 +179,9 @@ router.get("/estatisticas", async (req, res) => {
     const whereUser = isAdmin ? '' : 'WHERE v.UsuarioID = ?';
     const params = isAdmin ? [] : [userId];
 
-    // Totais
     const [[totalVendasRow]] = await pool.query(`SELECT COUNT(*) AS totalVendas FROM Venda v ${whereUser}`, params);
     const [[totalValorRow]]  = await pool.query(`SELECT IFNULL(SUM(v.ValorLiquido), 0) AS totalValor FROM Venda v ${whereUser}`, params);
 
-    // Top produtos
     const [topProdutos] = await pool.query(`
       SELECT p.Nome AS nome_produto, SUM(iv.Quantidade) AS qtd
       FROM ItemVenda iv
@@ -344,7 +326,4 @@ router.get("/clientes", async (req, res) => {
   }
 });
 
-// ================================================
-// EXPORT
-// ================================================
 module.exports = router;

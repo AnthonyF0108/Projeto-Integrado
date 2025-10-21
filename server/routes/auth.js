@@ -17,7 +17,6 @@ router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // Agora buscamos também a coluna ROLE
     const [rows] = await pool.query(
       'SELECT UsuarioID, Nome, NomeUsuario, Senha, Role, Email FROM Usuarios WHERE NomeUsuario = ? AND Ativo = 1',
       [username]
@@ -34,13 +33,12 @@ router.post('/login', async (req, res) => {
       return res.render('login', { error: 'Senha incorreta.' });
     }
 
-    // 🔥 Corrigido: role vem direto do banco!
     req.session.user = {
       id: user.UsuarioID,
       nome: user.Nome,
       nomeUsuario: user.NomeUsuario,
       email: user.Email,
-      role: user.Role // <-- ESSENCIAL
+      role: user.Role
     };
 
     console.log('Usuário logado:', req.session.user);
