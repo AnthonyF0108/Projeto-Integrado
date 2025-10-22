@@ -1,6 +1,5 @@
 -- ===================================================
 -- BANCO DE DADOS AGROVALE - ESTRUTURA COMPLETA 2025
--- Inclui controle de usuário admin e role-based access
 -- ===================================================
 
 -- DROP + CREATE DATABASE
@@ -194,19 +193,25 @@ VALUES ('2025-10-20', 20, 10, 2025, 4, 43, 'Segunda', 0, 0);
 
 INSERT INTO FormaPagamento (Nome, Descricao, Parcelamento, Taxa, DiasRecebimento)
 VALUES ('Dinheiro', 'Pagamento à vista', 0, 0, 0);
+VALUES ('Cartão de Crédito', 'Pagamento parcelado no cartão', 1, 2.5, 30);
+VALUES ('Boleto Bancário', 'Pagamento via boleto', 1, 1.0, 7);
+VALUES ('Pix', 'Pagamento instantâneo via Pix', 0, 0, 0);
+VALUES ('Cheque', 'Pagamento via cheque', 1, 0.5, 15);
+VALUES ('Transferência Bancária', 'Pagamento via transferência', 0, 0, 0);
+VALUES ('Depósito em Conta', 'Pagamento via depósito', 0, 0, 0);
 
 -- ===============================
 -- USUÁRIOS PADRÃO
 -- ===============================
--- Senha admin123
+-- Senha 123
 INSERT INTO Usuarios (Nome, CPF, Email, Telefone, Comissao, NomeUsuario, Senha, Role, Ativo)
 VALUES ('Administrador', NULL, 'admin@local', NULL, 0, 'admin',
-'$2a$10$2Vy4oQe0v8Zy1HhJb8n0E.6b1z9m7o9c8yQmVJ7Kqk6k2m8Xq7XSO', 'admin', 1);
+'$2a$10$.s4GdTvoA2wywX3WY/qm8ercp1i9g9BMVMwp2z4ukMrilj4aqxPIe', 'admin', 1);
 
--- Senha vendedor123
+-- Senha 1234
 INSERT INTO Usuarios (Nome, CPF, Email, Telefone, Comissao, NomeUsuario, Senha, Role, Ativo)
 VALUES ('Vendedor 1', '000.111.222-33', 'vendedor1@local', '11933334444', 5.00, 'vendedor1',
-'$2a$10$D/a3qW01zWmTCYbwKrXyVesjQ4A1ImM32F3rwhFyYAZ2yP0j5rqKm', 'user', 1);
+'$10$FhhVJrlv9uZrqQ.aAk9iS.qE.YjjvKnfpXc4Vu7hgvqoH.1YRujZu', 'user', 1);
 
 -- ===============================
 -- PRODUTOS EXEMPLO
@@ -255,12 +260,3 @@ BEGIN
 END$$
 
 DELIMITER ;
-
--- ===============================
--- 💾 TESTE: VENDA EXEMPLO
--- ===============================
-INSERT INTO Venda (NumeroPedido, ClienteID, UsuarioID, TempoID, FormaPagamentoID, ValorBruto, Desconto, ValorLiquido, Frete, Status)
-VALUES ('VENDA-TESTE-001', 1, 2, 1, 1, 8.00, 0.00, 8.00, 0.00, 'Confirmada');
-
-INSERT INTO ItemVenda (VendaID, ProdutoID, Quantidade, PrecoUnitario, DescontoItem)
-VALUES (1, 1, 1, 8.00, 0.00);
