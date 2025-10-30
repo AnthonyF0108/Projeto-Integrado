@@ -779,13 +779,6 @@ router.get('/vendas/detalhes/:id', async (req, res) => {
 router.get('/relatorios/auditoria', verificarAdmin, async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
-  return res.send(`
-    <script>
-      alert('🚫 Acesso negado! Apenas administradores podem visualizar o relatório de auditoria.');
-      window.location.href = '/dashboard';
-    </script>
-  `);
-
   try {
     const filtroUsuario = req.query.usuario || '';
     const filtroAcao = req.query.acao || '';
