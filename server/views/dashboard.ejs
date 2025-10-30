@@ -4,273 +4,68 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - Agrovale</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f5f6fa;
-      display: flex;
-    }
-
-    .sidebar {
-      width: 220px;
-      background: #007bff;
-      color: white;
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
-      padding-top: 1rem;
-    }
-    .sidebar h2 {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .sidebar ul {
-      list-style: none;
-      padding: 0;
-    }
-    .sidebar ul li {
-      padding: 1rem;
-    }
-    .sidebar ul li a {
-      color: white;
-      text-decoration: none;
-      display: block;
-      font-weight: bold;
-    }
-    .sidebar ul li a:hover {
-      background: #0056b3;
-      border-radius: 4px;
-    }
-
-    .content {
-      margin-left: 220px;
-      width: 100%;
-      padding: 1rem 2rem;
-    }
-
-    header {
-      background: #007bff;
-      color: white;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-radius: 6px;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-    header a {
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-      margin: 2rem 0;
-    }
-    .card {
-      background: white;
-      padding: 1.5rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    .card h3 {
-      margin: 0;
-      font-size: 1.2rem;
-      color: #333;
-    }
-    .card p {
-      margin: 0.5rem 0 0;
-      font-size: 1.4rem;
-      font-weight: bold;
-      color: #007bff;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      background: white;
-      border-radius: 5px;
-      overflow: hidden;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    th, td {
-      padding: 0.75rem 1rem;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-    th {
-      background: #007bff;
-      color: white;
-    }
-    tr:hover {
-      background: #f1f1f1;
-    }
-    .error {
-      color: red;
-      margin-bottom: 1rem;
-    }
-
-    .banner {
-      width: 80%;
-      margin: 20px auto;
-      text-align: center;
-      border-radius: 8px;
-      padding: 12px 20px;
-      font-weight: bold;
-    }
-    .admin-banner {
-      background: linear-gradient(90deg, #1f8ef1, #007bff);
-      color: white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    }
-    .user-banner {
-      background: #f9f9f9;
-      border: 1px solid #ddd;
-      color: #555;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
-  <% if (typeof flashMessage !== 'undefined' && flashMessage) { %>
-    <div id="flash-msg" class="flash <%= flashMessage.tipo %>">
-      <%= flashMessage.texto %>
-    </div>
-
-    <script>
-      const msg = document.getElementById('flash-msg');
-      if (msg) {
-        setTimeout(() => {
-          msg.style.opacity = '0';
-          msg.style.transform = 'translateY(-20px)';
-          msg.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
-        }, 4000);
-
-        setTimeout(() => msg.remove(), 5000);
-      }
-    </script>
-
-    <style>
-      .flash {
-        position: fixed;
-        top: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 9999;
-        padding: 14px 22px;
-        border-radius: 6px;
-        color: white;
-        font-weight: bold;
-        font-size: 1rem;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        animation: slideDown 0.5s ease-out;
-      }
-      .flash.sucesso { background-color: #28a745; }
-      .flash.erro { background-color: #dc3545; }
-      .flash.info { background-color: #007bff; }
-
-      @keyframes slideDown {
-        from { transform: translate(-50%, -30px); opacity: 0; }
-        to { transform: translate(-50%, 0); opacity: 1; }
-      }
-    </style>
-  <% } %>
   <div class="sidebar">
     <h2>Agrovale</h2>
-      <ul>
-        <li><a href="/dashboard">🏠 Início</a></li>
-        <li><a href="/produtos">📦 Consulta de Produto</a></li>
-        <li><a href="/vendas">💰 Vendas</a></li>
-        <li><a href="/estatisticas">📊 Estatísticas</a></li>
-        <li><a href="/clientes">👤 Clientes</a></li>
-        <li><a href="/relatorios/auditoria">🧾 Log de Auditoria</a></li>
-        <li><a href="/logout">🚪 Sair</a></li>
-      </ul>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Produtos</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
   </div>
 
   <div class="content">
-    <header>
-      <h1>Dashboard</h1>
-      <div>
-        <span>👋 Olá, <strong><%= user.nome %></strong></span>
-      </div>
-    </header>
+    <header><h1>Agrovale — Painel Administrativo</h1></header>
 
-    <% if (user && user.role === 'admin') { %>
-      <div class="banner admin-banner">
-        🛡️ Você está em <strong>Modo Administrador</strong> — visualizando todas as vendas e estatísticas.
-      </div>
-    <% } else if (user && user.role === 'user') { %>
-      <div class="banner user-banner">
-        👤 Modo Vendedor — exibindo apenas suas próprias vendas.
-      </div>
-    <% } %>
+    <!-- 🔍 Área centralizada -->
+    <div class="dashboard-center">
+      <form action="/dashboard" method="GET">
+        <input 
+          type="text" 
+          name="termo" 
+          placeholder="🔍 Pesquisar produto por nome, código ou código reduzido..." 
+          value="<%= termo || '' %>" 
+          required
+        >
+        <button type="submit">Buscar</button>
+      </form>
 
-    <% if (typeof error !== 'undefined' && error) { %>
-      <div class="error"><%= error %></div>
-    <% } %>
-
-    <div class="cards">
-      <div class="card">
-        <h3>Clientes</h3>
-        <p><%= totalClientes %></p>
-      </div>
-      <div class="card">
-        <h3>Produtos com Estoque Baixo</h3>
-        <p><%= estoqueBaixo %></p>
-      </div>
-      <div class="card">
-        <h3>Total de Vendas</h3>
-        <p><%= totalVendas %></p>
-      </div>
-      <div class="card">
-        <h3>Valor Vendido</h3>
-        <p>R$ <%= parseFloat(totalValor || 0).toFixed(2) %></p>
+      <div class="dashboard-buttons">
+        <a href="/clientes/novo" class="btn btn-secondary">👤 Cadastrar Novo Cliente</a>
+        <a href="/vendas/nova" class="btn btn-success">💰 Nova Venda</a>
+        <a href="/produtos/entrada" class="btn btn-primary">📥 Entrada de Mercadorias</a>
       </div>
     </div>
 
-    <h2>Últimas Vendas</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Pedido</th>
-          <th>Data</th>
-          <th>Valor Bruto</th>
-          <th>Desconto</th>
-          <th>Valor Líquido</th>
-          <th>Status</th>
-          <th>Vendedor</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (vendas.length === 0) { %>
-          <tr><td colspan="8" style="text-align:center;">Nenhuma venda registrada</td></tr>
-        <% } else { %>
-          <% vendas.forEach(v => { %>
+    <% if (produtos && produtos.length > 0) { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nome</th>
+            <th>Preço de Venda</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% produtos.forEach(p => { %>
             <tr>
-              <td><%= v.VendaID %></td>
-              <td><%= v.NumeroPedido || '-' %></td>
-              <td><%= new Date(v.DataVenda).toLocaleString('pt-BR') %></td>
-              <td>R$ <%= parseFloat(v.ValorBruto || 0).toFixed(2) %></td>
-              <td>R$ <%= parseFloat(v.Desconto || 0).toFixed(2) %></td>
-              <td>R$ <%= parseFloat(v.ValorLiquido || 0).toFixed(2) %></td>
-              <td><%= v.Status %></td>
-              <td><%= v.VendedorNome %></td>
+              <td><%= p.Codigo %></td>
+              <td><%= p.Nome %></td>
+              <td>R$ <%= parseFloat(p.PrecoVenda || 0).toFixed(2) %></td>
             </tr>
           <% }) %>
-        <% } %>
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    <% } else if (termo) { %>
+      <p class="no-results">Nenhum produto encontrado para "<%= termo %>".</p>
+    <% } %>
   </div>
 </body>
 </html>

@@ -1,33 +1,64 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><title>Usuários</title></head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuários - Agrovale</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
 <body>
-  <h1>Usuários</h1>
-  <a href="/admin/usuarios/novo">+ Novo Usuário</a>
-  <table border="1" cellpadding="6">
-    <thead>
-      <tr>
-        <th>ID</th><th>Nome</th><th>Usuário</th><th>Email</th><th>Role</th><th>Ativo</th><th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% usuarios.forEach(u => { %>
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/admin/usuarios">👥 Usuários</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <header><h1>Agrovale — Painel Administrativo</h1></header>
+
+    <div class="text-center">
+      <a href="/admin/usuarios/novo" class="btn btn-success">+ Novo Usuário</a>
+    </div>
+
+    <table>
+      <thead>
         <tr>
-          <td><%= u.UsuarioID %></td>
-          <td><%= u.Nome %></td>
-          <td><%= u.NomeUsuario %></td>
-          <td><%= u.Email || '' %></td>
-          <td><%= u.Role %></td>
-          <td><%= u.Ativo ? 'Sim' : 'Não' %></td>
-          <td>
-            <a href="/admin/usuarios/<%= u.UsuarioID %>/editar">Editar</a>
-            <form action="/admin/usuarios/<%= u.UsuarioID %>/excluir" method="post" style="display:inline" onsubmit="return confirm('Excluir?')">
-              <button type="submit">Excluir</button>
-            </form>
-          </td>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Usuário</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Ativo</th>
+          <th>Ações</th>
         </tr>
-      <% }) %>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <% if (usuarios.length === 0) { %>
+          <tr><td colspan="7" class="text-center">Nenhum usuário cadastrado.</td></tr>
+        <% } else { %>
+          <% usuarios.forEach(u => { %>
+            <tr>
+              <td><%= u.UsuarioID %></td>
+              <td><%= u.Nome %></td>
+              <td><%= u.NomeUsuario %></td>
+              <td><%= u.Email || '' %></td>
+              <td><%= u.Role %></td>
+              <td><%= u.Ativo ? 'Sim' : 'Não' %></td>
+              <td>
+                <a href="/admin/usuarios/<%= u.UsuarioID %>/editar" class="btn btn-primary">Editar</a>
+                <form action="/admin/usuarios/<%= u.UsuarioID %>/excluir" method="POST" style="display:inline;" onsubmit="return confirm('Excluir usuário?')">
+                  <button type="submit" class="btn btn-danger">Excluir</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
 </body>
 </html>

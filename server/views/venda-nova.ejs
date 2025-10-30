@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova Venda - Agrovale</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Consulta de Produto</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <header><h1>Nova Venda</h1></header>
+
+    <div class="venda-form">
+      <form action="/vendas/criar" method="POST">
+
+        <div class="form-group">
+          <label for="cliente">Cliente:</label>
+          <select id="cliente" name="clienteId" required>
+            <option value="">Selecione um cliente</option>
+            <% clientes.forEach(cliente => { %>
+              <option value="<%= cliente.ClienteID %>"><%= cliente.Nome %> (<%= cliente.CPF_CNPJ || 'N/A' %>)</option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="forma_pagamento">Forma de Pagamento:</label>
+          <select id="forma_pagamento" name="formaPagamentoId" required>
+            <option value="">Selecione a forma de pagamento</option>
+            <% formasPagamento.forEach(fp => { %>
+              <option value="<%= fp.PagamentoID %>"><%= fp.Nome %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <h3>Itens da Venda</h3>
+        <div class="item-header">
+          <div>Produto</div>
+          <div>Qtd</div>
+          <div>Unitário</div>
+          <div>Total</div>
+          <div></div>
+        </div>
+
+        <div id="itens-container">
+          <div class="item-row">
+            <div>
+              <select name="produtos[]" class="produto-select" onchange="updateFields(this, 0)" required>
+                <option value="">Selecione um produto</option>
+                <% produtos.forEach(produto => { %>
+                  <option value="<%= produto.ProdutoID %>" data-preco="<%= parseFloat(produto.PrecoVenda) %>" data-unidade="<%= produto.UnidadeMedida %>">
+                    <%= produto.Nome %> (R$ <%= parseFloat(produto.PrecoVenda).toFixed(2) %>)
+                  </option>
+                <% }) %>
+              </select>
+            </div>
+            <div><input type="number" name="quantidades[]" id="quantidade-0" step="1" value="1" oninput="updateTotal(0)" required></div>
+            <div><input type="text" name="valores_unitarios[]" id="valor-unitario-0" readonly></div>
+            <div><input type="text" name="valores_totais[]" id="valor-total-0" readonly></div>
+            <div><button type="button" class="btn btn-remove" onclick="removeItem(this)">Remover</button></div>
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-secondary" id="add-item">+ Adicionar Item</button>
+
+        <h3 style="margin-top: 25px;">Resumo da Venda</h3>
+
+        <div class="form-group">
+          <label for="valor_bruto">Valor Bruto:</label>
+          <input type="text" id="valor_bruto" name="valor_bruto" readonly>
+        </div>
+        <div class="form-group">
+          <label for="desconto">Desconto (%):</label>
+          <input type="number" step="0.01" id="desconto" name="desconto" value="0.00" oninput="updateSummary()">
+        </div>
+        <div class="form-group">
+          <label for="valor_liquido">Valor Líquido:</label>
+          <input type="text" id="valor_liquido" name="valor_liquido" readonly>
+        </div>
+        <div class="form-group">
+          <label for="observacoes">Observações:</label>
+          <textarea id="observacoes" name="observacoes" rows="3"></textarea>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-success">✅ Finalizar Venda</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let itemCounter = 1;
+
+    // Atualiza os campos do item selecionado
+    function updateFields(select, index) {
+      const selectedOption = select.options[select.selectedIndex];
+      const preco = parseFloat(selectedOption?.dataset?.preco);
+      const unidade = selectedOption?.dataset?.unidade;
+      const valorUnitarioInput = document.getElementById(`valor-unitario-${index}`);
+      const quantidadeInput = document.getElementById(`quantidade-${index}`);
+      const valorTotalInput = document.getElementById(`valor-total-${index}`);
+
+      if (!isNaN(preco)) {
+        valorUnitarioInput.value = preco.toFixed(2);
+        quantidadeInput.step = (unidade === 'un' || unidade === 'pc') ? 1 : 0.01;
+        updateTotal(index);
+      } else {
+        valorUnitarioInput.value = '';
+        valorTotalInput.value = '';
+        updateSummary();
+      }
+    }
+
+    // Atualiza o total de um item
+    function updateTotal(index) {
+      const quantidade = parseFloat(document.getElementById(`quantidade-${index}`).value);
+      const valorUnitario = parseFloat(document.getElementById(`valor-unitario-${index}`).value);
+      const valorTotal = document.getElementById(`valor-total-${index}`);
+
+      if (!isNaN(quantidade) && !isNaN(valorUnitario)) {
+        valorTotal.value = (quantidade * valorUnitario).toFixed(2);
+      } else {
+        valorTotal.value = '0.00';
+      }
+
+      updateSummary();
+    }
+
+    // Atualiza os totais gerais (bruto e líquido)
+    function updateSummary() {
+      const itemTotals = document.querySelectorAll('input[name="valores_totais[]"]');
+      let valorBruto = 0;
+      itemTotals.forEach(input => {
+        const total = parseFloat(input.value);
+        if (!isNaN(total)) valorBruto += total;
+      });
+
+      const descontoPerc = parseFloat(document.getElementById('desconto').value) || 0;
+      const valorLiquido = valorBruto * (1 - descontoPerc / 100);
+
+      document.getElementById('valor_bruto').value = valorBruto.toFixed(2);
+      document.getElementById('valor_liquido').value = valorLiquido.toFixed(2);
+    }
+
+    // Remove linha de item
+    function removeItem(button) {
+      button.closest('.item-row').remove();
+      updateSummary();
+    }
+
+    // Adiciona novo item dinamicamente
+    function addItem() {
+      const index = itemCounter++;
+      const container = document.getElementById('itens-container');
+
+      const row = document.createElement('div');
+      row.classList.add('item-row');
+      row.innerHTML = `
+        <div>
+          <select name="produtos[]" class="produto-select" id="produto-${index}" required>
+            <option value="">Selecione um produto</option>
+            <% produtos.forEach(produto => { %>
+              <option value="<%= produto.ProdutoID %>" 
+                      data-preco="<%= parseFloat(produto.PrecoVenda) %>" 
+                      data-unidade="<%= produto.UnidadeMedida %>">
+                <%= produto.Nome %> (R$ <%= parseFloat(produto.PrecoVenda).toFixed(2) %>)
+              </option>
+            <% }); %>
+          </select>
+        </div>
+        <div><input type="number" name="quantidades[]" id="quantidade-${index}" value="1" step="1" required></div>
+        <div><input type="text" name="valores_unitarios[]" id="valor-unitario-${index}" readonly></div>
+        <div><input type="text" name="valores_totais[]" id="valor-total-${index}" readonly></div>
+        <div><button type="button" class="btn btn-remove" onclick="removeItem(this)">Remover</button></div>
+      `;
+
+      container.appendChild(row);
+
+      const select = document.getElementById(`produto-${index}`);
+      const quantidade = document.getElementById(`quantidade-${index}`);
+
+      select.addEventListener('change', () => updateFields(select, index));
+      quantidade.addEventListener('input', () => updateTotal(index));
+    }
+
+    // Inicialização ao carregar a página
+    document.addEventListener('DOMContentLoaded', () => {
+      // Adiciona listeners no primeiro item
+      const selectInicial = document.querySelector('.produto-select');
+      const quantidadeInicial = document.getElementById('quantidade-0');
+
+      if (selectInicial) selectInicial.addEventListener('change', () => updateFields(selectInicial, 0));
+      if (quantidadeInicial) quantidadeInicial.addEventListener('input', () => updateTotal(0));
+
+      document.getElementById('add-item').addEventListener('click', addItem);
+      document.getElementById('desconto').addEventListener('input', updateSummary);
+    });
+  </script>
+</body>
+</html>

@@ -2,92 +2,139 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title><%= title %></title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6fa; display: flex; }
-    .sidebar { width: 220px; background: #007bff; color: white; height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; padding-top: 1rem; }
-    .sidebar a { padding: 0.8rem 1rem; color: white; text-decoration: none; }
-    .sidebar a:hover { background: #0056b3; }
-    .content { margin-left: 220px; padding: 2rem; width: calc(100% - 220px); }
-    .form-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
-    .form-group { margin-bottom: 1rem; }
-    label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
-    input, select { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 5px; cursor: pointer; color: white; font-size: 1rem; }
-    .btn-success { background: #28a745; }
-    .btn-success:hover { background: #218838; }
-    .btn-secondary { background: #6c757d; }
-    .btn-secondary:hover { background: #5a6268; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Produto' %> - Agrovale</title>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="sidebar">
     <h2>Agrovale</h2>
-    <a href="/dashboard">🏠 Início</a>
-    <a href="/produtos">📦 Consulta de Produto</a>
-    <a href="/vendas">💰 Vendas</a>
-    <a href="/estatisticas">📊 Estatísticas</a>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos" class="active">📦 Produtos</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
   </div>
 
   <div class="content">
-    <h1><%= title %></h1>
-    <div class="form-container">
-      <form action="/produtos/<%= produto ? 'alterar/' + produto.ProdutoID : 'criar' %>" method="POST">
-        
-        <div class="form-group">
-          <label for="codigo_externo">Código Externo:</label>
-          <input type="text" id="codigo_externo" name="codigo_externo" value="<%= produto ? produto.Codigo : '' %>" required>
-        </div>
-        
-        <div class="form-group">
-          <label for="nome_produto">Nome do Produto:</label>
-          <input type="text" id="nome_produto" name="nome_produto" value="<%= produto ? produto.Nome : '' %>" required>
-        </div>
-        
-        <div class="form-group">
-          <label for="categoria">Categoria:</label>
-          <input type="text" id="categoria" name="categoria" value="<%= produto ? produto.Categoria : '' %>" required>
-        </div>
+    <header><h1><%= title || 'Cadastro de Produto' %></h1></header>
 
-        <div class="form-group">
-          <label for="subcategoria">Subcategoria:</label>
-          <input type="text" id="subcategoria" name="subcategoria" value="<%= produto ? produto.Subcategoria : '' %>">
-        </div>
-        
-        <div class="form-group">
-          <label for="preco_custo">Preço de Custo:</label>
-          <input type="number" step="0.01" id="preco_custo" name="preco_custo" value="<%= produto ? produto.PrecoCusto : '' %>" required>
-        </div>
+    <form action="<%= action %>" method="POST" class="form-container">
+      
+      <!-- CÓDIGO -->
+      <div class="form-group">
+        <label for="codigo">Código:</label>
+        <input
+          type="text"
+          id="codigo"
+          name="codigo"
+          value="<%= (produto && produto.Codigo) ? produto.Codigo : (typeof nextCodigo !== 'undefined' ? nextCodigo : '') %>"
+          placeholder="Gerado automaticamente"
+          readonly
+        >
+      </div>
 
-        <div class="form-group">
-            <label for="margem_lucro">Margem de Lucro (%):</label>
-            <input type="number" step="0.01" id="margem_lucro" name="margem_lucro" value="<%= produto ? produto.margem_lucro : '' %>" required>
-        </div>
-        
-        <div class="form-group">
-          <label for="unidade_medida">Unidade de Medida:</label>
-          <input type="number" id="unidade_medida" name="unidade_medida" value="<%= produto ? produto.UnidadeMedida : '' %>" required>
-        </div>
+      <!-- NOME -->
+      <div class="form-group">
+        <label for="nome_produto">Nome do Produto:</label>
+        <input
+          type="text"
+          id="nome_produto"
+          name="nome_produto"
+          required
+          value="<%= produto && produto.Nome ? produto.Nome : '' %>"
+        >
+      </div>
 
-        <div class="form-group">
-          <label for="quantidade_estoque">Estoque Atual:</label>
-          <input type="number" id="quantidade_estoque" name="quantidade_estoque" value="<%= produto ? produto.EstoqueAtual : '' %>" required>
-        </div>
+      <!-- CATEGORIA -->
+      <div class="form-group">
+        <label for="categoria">Categoria:</label>
+        <input
+          type="text"
+          id="categoria"
+          name="categoria"
+          value="<%= produto && produto.Categoria ? produto.Categoria : '' %>"
+        >
+      </div>
 
-        <div class="form-group">
-          <label for="estoque_minimo">Estoque Mínimo:</label>
-          <input type="number" id="estoque_minimo" name="estoque_minimo" value="<%= produto ? produto.EstoqueMinimo : '' %>" required>
-        </div>
+      <!-- SUBCATEGORIA -->
+      <div class="form-group">
+        <label for="subcategoria">Subcategoria:</label>
+        <input
+          type="text"
+          id="subcategoria"
+          name="subcategoria"
+          value="<%= produto && produto.Subcategoria ? produto.Subcategoria : '' %>"
+        >
+      </div>
 
-        <div class="form-group">
-          <label for="fornecedor_id">Código do Fornecedor:</label>
-          <input type="text" id="fornecedor_id" name="fornecedor_id" value="<%= produto ? produto.FornecedorID : '' %>">
-        </div>
+      <!-- PREÇO DE CUSTO -->
+      <div class="form-group">
+        <label for="preco_custo">Preço de Custo (R$):</label>
+        <input
+          type="number"
+          step="0.01"
+          id="preco_custo"
+          name="preco_custo"
+          value="<%= produto && produto.PrecoCusto ? produto.PrecoCusto : 0 %>"
+        >
+      </div>
 
-        <button type="submit" class="btn btn-success">Salvar</button>
+      <!-- MARGEM DE LUCRO -->
+      <div class="form-group">
+        <label for="margem_lucro">Margem de Lucro (%):</label>
+        <input
+          type="number"
+          step="0.01"
+          id="margem_lucro"
+          name="margem_lucro"
+          value="0"
+        >
+      </div>
+
+      <!-- UNIDADE -->
+      <div class="form-group">
+        <label for="unidade_medida">Unidade de Medida:</label>
+        <input
+          type="text"
+          id="unidade_medida"
+          name="unidade_medida"
+          value="<%= produto && produto.UnidadeMedida ? produto.UnidadeMedida : 'un' %>"
+        >
+      </div>
+
+      <!-- ESTOQUE MÍNIMO -->
+      <div class="form-group">
+        <label for="estoque_minimo">Estoque Mínimo:</label>
+        <input
+          type="number"
+          id="estoque_minimo"
+          name="estoque_minimo"
+          value="<%= produto && produto.EstoqueMinimo ? produto.EstoqueMinimo : 0 %>"
+        >
+      </div>
+
+      <!-- FORNECEDOR -->
+      <div class="form-group">
+        <label for="fornecedor_id">Fornecedor (ID ou Nome):</label>
+        <input
+          type="text"
+          id="fornecedor_id"
+          name="fornecedor_id"
+          value="<%= produto && produto.FornecedorID ? produto.FornecedorID : '' %>"
+        >
+      </div>
+
+      <!-- BOTÕES -->
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salvar</button>
         <a href="/produtos" class="btn btn-secondary">Cancelar</a>
-      </form>
-    </div>
+      </div>
+    </form>
   </div>
 </body>
 </html>

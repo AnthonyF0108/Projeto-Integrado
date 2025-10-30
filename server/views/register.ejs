@@ -4,77 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registrar - Agrovale</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #28a745, #007bff);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .register-container {
-      background: #fff;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-      width: 400px;
-      text-align: center;
-    }
-    h1 {
-      margin-bottom: 1.5rem;
-      color: #007bff;
-      font-size: 1.4rem;
-    }
-    input[type="text"], input[type="email"], input[type="password"] {
-      width: 100%;
-      padding: 0.75rem;
-      margin-bottom: 1rem;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-    button {
-      width: 100%;
-      padding: 0.75rem;
-      border: none;
-      border-radius: 5px;
-      background: #007bff;
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s;
-      margin-bottom: 0.5rem;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .error {
-      color: red;
-      margin-bottom: 1rem;
-      font-size: 0.9rem;
-    }
-    .text-danger {
-      color: red;
-      font-size: 0.85rem;
-    }
-    a {
-      color: #007bff;
-      text-decoration: none;
-      font-size: 0.9rem;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    .is-invalid {
-      border-color: red;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
-  <div class="register-container">
+<body class="auth-page">
+  <div class="auth-container">
     <h1>Registrar-se</h1>
 
     <% if (typeof error !== 'undefined' && error) { %>
@@ -87,37 +20,31 @@
       <input type="email" name="email" placeholder="E-mail">
       <input type="text" name="telefone" placeholder="Telefone">
       <input type="text" name="usuario" placeholder="Nome de usuário" required>
-      
       <input type="password" id="senha" name="senha" placeholder="Senha" required>
       <input type="password" id="confirmarSenha" name="confirmarSenha" placeholder="Confirmar Senha" required>
-      <div id="senhaErro" class="text-danger" style="display: none;">
-        As senhas não coincidem.
-      </div>
-
-      <button type="submit">Registrar</button>
+      <div id="senhaErro" class="error" style="display: none;">As senhas não coincidem.</div>
+      <button type="submit" class="btn btn-primary">Registrar</button>
     </form>
 
     <p style="margin-top: 10px;">
       Já possui conta? <a href="/login">Entrar</a>
     </p>
+
+    <script>
+      const form = document.getElementById("registerForm");
+      const senha = document.getElementById("senha");
+      const confirmarSenha = document.getElementById("confirmarSenha");
+      const senhaErro = document.getElementById("senhaErro");
+
+      form.addEventListener("submit", (event) => {
+        if (senha.value !== confirmarSenha.value) {
+          event.preventDefault();
+          senhaErro.style.display = "block";
+        } else {
+          senhaErro.style.display = "none";
+        }
+      });
+    </script>
   </div>
-
-  <script>
-    const form = document.getElementById("registerForm");
-    const senha = document.getElementById("senha");
-    const confirmarSenha = document.getElementById("confirmarSenha");
-    const senhaErro = document.getElementById("senhaErro");
-
-    form.addEventListener("submit", function(event) {
-      if (senha.value !== confirmarSenha.value) {
-        event.preventDefault();
-        senhaErro.style.display = "block";
-        confirmarSenha.classList.add("is-invalid");
-      } else {
-        senhaErro.style.display = "none";
-        confirmarSenha.classList.remove("is-invalid");
-      }
-    });
-  </script>
 </body>
 </html>

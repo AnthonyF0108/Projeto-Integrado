@@ -2,98 +2,92 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Produtos - Agrovale</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6fa; display: flex; }
-
-    .sidebar {
-      width: 220px;
-      background: #007bff;
-      color: white;
-      height: 100vh;
-      position: fixed;
-      top: 0; left: 0;
-      padding-top: 1rem;
-    }
-    .sidebar h2 { text-align: center; margin-bottom: 2rem; }
-    .sidebar a {
-      display: block;
-      padding: 0.8rem 1rem;
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .sidebar a:hover { background: #0056b3; }
-
-    .content { margin-left: 220px; padding: 2rem; width: calc(100% - 220px); }
-    h1 { margin: 0; display: inline-block; }
-
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .btn { padding: 8px 14px; text-decoration: none; border-radius: 5px; cursor: pointer; border: none; }
-    .btn-primary { background: #007bff; color: white; }
-    .btn-warning { background: #ffc107; color: black; }
-    .btn-danger { background: #dc3545; color: white; }
-    .btn:hover { opacity: 0.9; }
-
-    table { width: 100%; border-collapse: collapse; background: white; border-radius: 5px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background: #007bff; color: white; }
-    tr:hover { background: #f1f1f1; }
-    form { display: inline; }
-  </style>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
+  <!-- ===== Sidebar ===== -->
   <div class="sidebar">
     <h2>Agrovale</h2>
-    <a href="/dashboard">🏠 Início</a>
-    <a href="/produtos">📦 Consulta de Produto</a>
-    <a href="/vendas">💰 Vendas</a>
-    <a href="/estatisticas">📊 Estatísticas</a>
-    <a href="/clientes">👤 Clientes</a>
-    <a href="/logout">🚪 Sair</a>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Produtos</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
   </div>
 
+  <!-- ===== Conteúdo principal ===== -->
   <div class="content">
-    <div class="page-header">
-      <h1>Lista de Produtos</h1>
-      <a href="/produtos/criar" class="btn btn-primary">➕ Novo Produto</a>
+    <header><h1>📦 Lista de Produtos</h1></header>
+
+    <!-- Botão de novo produto -->
+    <div class="text-center">
+      <a href="/produtos/criar" class="btn btn-success">+ Novo Produto</a>
     </div>
 
+    <!-- ===== Tabela de produtos ===== -->
     <table>
       <thead>
         <tr>
-          <th>Cód. Interno</th>
-          <th>Cód. Externo</th>
+          <th>Código</th>
           <th>Nome</th>
-          <th>Valor à Vista</th>
-          <th>Valor a Prazo</th>
-          <th>Estoque</th>
+          <th>Categoria</th>
+          <th>Preço de Venda</th>
+          <th>Estoque Atual</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
-        <% if (produtos.length === 0) { %>
-          <tr><td colspan="7" style="text-align:center;">Nenhum produto encontrado</td></tr>
+        <% if (!produtos || produtos.length === 0) { %>
+          <tr>
+            <td colspan="6" class="text-center">Nenhum produto cadastrado.</td>
+          </tr>
         <% } else { %>
           <% produtos.forEach(p => { %>
-            <tr>
-              <td><%= p.codigo_interno %></td>
-              <td><%= p.codigo_externo %></td>
-              <td><%= p.nome_produto %></td>
-              <td>R$ <%= p.valor_venda_vista.toFixed(2) %></td>
-              <td>R$ <%= p.valor_venda_prazo.toFixed(2) %></td>
-              <td><%= p.quantidade_estoque %></td>
+            <tr class="<%= p.Ativo === 0 ? 'inativo' : '' %>">
+              <!-- Código -->
+              <td><%= (p.Codigo || p.ProdutoID).toString().padStart(5, '0') %></td>
+
+              <!-- Nome -->
               <td>
-                <a href="/produtos/alterar/<%= p.codigo_interno %>" class="btn btn-warning">✏️ Alterar</a>
-                <form action="/produtos/excluir/<%= p.codigo_interno %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este produto?');">
-                  <button type="submit" class="btn btn-danger">🗑️ Excluir</button>
-                </form>
+                <%= p.Nome %>
+                <% if (p.Ativo === 0) { %>
+                  <span class="status-inativo">(Inativo)</span>
+                <% } %>
+              </td>
+
+              <!-- Categoria -->
+              <td><%= p.Categoria || '-' %></td>
+
+              <!-- Preço -->
+              <td>R$ <%= p.PrecoVenda ? p.PrecoVenda.toFixed(2) : '0.00' %></td>
+
+              <!-- Estoque -->
+              <td><%= p.EstoqueAtual || 0 %></td>
+
+              <!-- Ações -->
+              <td class="acoes">
+                <a href="/produtos/editar/<%= p.ProdutoID %>" class="btn btn-primary">Editar</a>
+
+                <% if (p.Ativo === 1) { %>
+                  <form action="/produtos/inativar/<%= p.ProdutoID %>" method="POST" class="inline-form">
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('Deseja inativar este produto?')">
+                      Inativar
+                    </button>
+                  </form>
+                <% } else { %>
+                  <form action="/produtos/ativar/<%= p.ProdutoID %>" method="POST" class="inline-form">
+                    <button type="submit" class="btn btn-success">
+                      Ativar
+                    </button>
+                  </form>
+                <% } %>
               </td>
             </tr>
           <% }) %>

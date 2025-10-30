@@ -75,7 +75,7 @@ mysql -u root -p agrovale < "Banco de dados Agrovale.sql"
 Para rodar em modo de desenvolvimento:
 
 ```bash
-npm start
+npm run dev
 ```
 
 A aplicação ficará disponível em:

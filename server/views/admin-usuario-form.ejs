@@ -1,37 +1,78 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><title><%= usuario ? 'Editar' : 'Novo' %> Usuário</title></head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= usuario ? 'Editar Usuário' : 'Novo Usuário' %> - Agrovale</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
 <body>
-  <h1><%= usuario ? 'Editar' : 'Novo' %> Usuário</h1>
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/admin/usuarios">👥 Usuários</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
+  </div>
 
-  <% if (error) { %><p style="color:red"><%= error %></p><% } %>
+  <div class="content">
+    <header><h1>Agrovale — Painel Administrativo</h1></header>
 
-  <form action="<%= usuario ? '/admin/usuarios/' + usuario.UsuarioID : '/admin/usuarios' %>" method="post">
-    <label>Nome: <input name="Nome" value="<%= usuario ? usuario.Nome : '' %>" required></label><br>
-    <label>Usuário: <input name="NomeUsuario" value="<%= usuario ? usuario.NomeUsuario : '' %>" required></label><br>
-    <label>Email: <input name="Email" value="<%= usuario ? (usuario.Email || '') : '' %>"></label><br>
-    <label>Telefone: <input name="Telefone" value="<%= usuario ? (usuario.Telefone || '') : '' %>"></label><br>
-    <label>CPF: <input name="CPF" value="<%= usuario ? (usuario.CPF || '') : '' %>"></label><br>
+    <form action="<%= usuario ? '/admin/usuarios/' + usuario.UsuarioID : '/admin/usuarios' %>" method="POST">
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" name="Nome" value="<%= usuario ? usuario.Nome : '' %>" required>
+      </div>
 
-    <% if (!usuario) { %>
-      <label>Senha: <input type="password" name="Senha" required></label><br>
-    <% } else { %>
-      <label>Nova Senha: <input type="password" name="NovaSenha" placeholder="(deixe em branco para manter)"></label><br>
-    <% } %>
+      <div class="form-group">
+        <label>Usuário</label>
+        <input type="text" name="NomeUsuario" value="<%= usuario ? usuario.NomeUsuario : '' %>" required>
+      </div>
 
-    <label>Role:
-      <select name="Role">
-        <option value="user" <%= usuario && usuario.Role==='user' ? 'selected' : '' %>>user</option>
-        <option value="admin" <%= usuario && usuario.Role==='admin' ? 'selected' : '' %>>admin</option>
-      </select>
-    </label><br>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="Email" value="<%= usuario ? usuario.Email : '' %>">
+      </div>
 
-    <label>Ativo:
-      <input type="checkbox" name="Ativo" value="1" <%= !usuario || usuario.Ativo ? 'checked' : '' %>>
-    </label><br>
+      <div class="form-group">
+        <label>Telefone</label>
+        <input type="text" name="Telefone" value="<%= usuario ? usuario.Telefone : '' %>">
+      </div>
 
-    <button type="submit">Salvar</button>
-    <a href="/admin/usuarios">Cancelar</a>
-  </form>
+      <div class="form-group">
+        <label>CPF</label>
+        <input type="text" name="CPF" value="<%= usuario ? usuario.CPF : '' %>">
+      </div>
+
+      <% if (!usuario) { %>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" name="Senha" required>
+        </div>
+      <% } else { %>
+        <div class="form-group">
+          <label>Nova Senha</label>
+          <input type="password" name="NovaSenha" placeholder="(deixe em branco para manter)">
+        </div>
+      <% } %>
+
+      <div class="form-group">
+        <label>Permissão</label>
+        <select name="Role">
+          <option value="user" <%= usuario && usuario.Role === 'user' ? 'selected' : '' %>>Usuário</option>
+          <option value="admin" <%= usuario && usuario.Role === 'admin' ? 'selected' : '' %>>Administrador</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label><input type="checkbox" name="Ativo" value="1" <%= !usuario || usuario.Ativo ? 'checked' : '' %>> Ativo</label>
+      </div>
+
+      <button type="submit" class="btn btn-success">Salvar</button>
+      <a href="/admin/usuarios" class="btn btn-secondary">Cancelar</a>
+    </form>
+  </div>
 </body>
 </html>

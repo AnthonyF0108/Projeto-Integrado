@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhes da Venda - Agrovale</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Produtos</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <header><h1>Detalhes da Venda</h1></header>
+
+    <section class="card">
+      <h2>Informações da Venda</h2>
+      <p><strong>ID da Venda:</strong> <%= venda.VendaID %></p>
+      <p><strong>Data:</strong> <%= new Date(venda.DataVenda).toLocaleString('pt-BR') %></p>
+      <p><strong>Status:</strong> <%= venda.Status || 'Concluída' %></p>
+      <p><strong>Vendedor:</strong> <%= venda.VendedorNome %></p>
+    </section>
+
+    <section class="card">
+      <h2>Cliente</h2>
+      <p><strong>Nome:</strong> <%= venda.ClienteNome %></p>
+      <p><strong>Email:</strong> <%= venda.ClienteEmail || '-' %></p>
+      <p><strong>Telefone:</strong> <%= venda.ClienteTelefone || '-' %></p>
+    </section>
+
+    <section class="card">
+      <h2>Itens Vendidos</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Qtd</th>
+            <th>Preço Unitário</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (itens.length === 0) { %>
+            <tr><td colspan="4" class="text-center">Nenhum item encontrado.</td></tr>
+          <% } else { %>
+            <% itens.forEach(item => { %>
+              <tr>
+                <td><%= item.ProdutoNome %></td>
+                <td><%= item.Quantidade %></td>
+                <td>R$ <%= Number(item.PrecoUnitario).toFixed(2) %></td>
+                <td>R$ <%= Number(item.TotalItem).toFixed(2) %></td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Totais</h2>
+      <p><strong>Valor Bruto:</strong> R$ <%= Number(venda.ValorBruto || 0).toFixed(2) %></p>
+      <p><strong>Desconto:</strong> R$ <%= Number(venda.Desconto || 0).toFixed(2) %></p>
+      <p>
+        <strong>Valor Líquido:</strong>
+        <span style="color: green; font-weight: bold;">
+          R$ <%= Number(venda.ValorLiquido || 0).toFixed(2) %>
+        </span>
+      </p>
+      <p><strong>Observações:</strong> <%= venda.Observacoes || '-' %></p>
+    </section>
+
+    <div class="text-center">
+      <a href="/vendas" class="btn btn-secondary">⬅ Voltar</a>
+    </div>
+  </div>
+</body>
+</html>

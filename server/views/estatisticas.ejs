@@ -2,95 +2,118 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Estatísticas - Agrovale</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6fa; display: flex; }
-
-    .sidebar {
-      width: 220px;
-      background: #007bff;
-      color: white;
-      height: 100vh;
-      position: fixed;
-      top: 0; left: 0;
-      padding-top: 1rem;
-    }
-    .sidebar h2 { text-align: center; margin-bottom: 2rem; }
-    .sidebar a {
-      display: block;
-      padding: 0.8rem 1rem;
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .sidebar a:hover { background: #0056b3; }
-
-    .content { margin-left: 220px; padding: 2rem; width: calc(100% - 220px); }
-    h1 { margin-bottom: 2rem; }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    .card h3 { margin: 0; font-size: 1.2rem; color: #333; }
-    .card p { margin: 0.5rem 0 0; font-size: 1.5rem; font-weight: bold; color: #007bff; }
-
-    .box {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .box h3 { margin-top: 0; }
-    .box ul { padding-left: 20px; margin: 0; }
-  </style>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="sidebar">
     <h2>Agrovale</h2>
-    <a href="/dashboard">🏠 Início</a>
-    <a href="/produtos">📦 Consulta de Produto</a>
-    <a href="/vendas">💰 Vendas</a>
-    <a href="/estatisticas">📊 Estatísticas</a>
-    <a href="/clientes">👤 Clientes</a>
-    <a href="/logout">🚪 Sair</a>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Produtos</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas" class="active">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
   </div>
 
   <div class="content">
-    <h1>Relatórios e Estatísticas</h1>
+    <header><h1>📊 Estatísticas de Vendas</h1></header>
 
-    <div class="cards">
+    <!-- 🔍 Filtro -->
+    <form action="/estatisticas" method="GET" class="filter-form">
+      <label for="periodo">Filtrar por:</label>
+      <select name="periodo" id="periodo" required>
+        <option value="dia" <%= filtro === 'dia' ? 'selected' : '' %>>Dia</option>
+        <option value="mes" <%= filtro === 'mes' ? 'selected' : '' %>>Mês</option>
+        <option value="ano" <%= filtro === 'ano' ? 'selected' : '' %>>Ano</option>
+      </select>
+
+      <input type="date" name="data" value="<%= dataSelecionada || '' %>">
+      <button type="submit" class="btn btn-primary">Aplicar</button>
+    </form>
+
+    <!-- 🔹 Cards de resumo -->
+    <section class="cards">
       <div class="card">
         <h3>Total de Vendas</h3>
         <p><%= totalVendas %></p>
       </div>
       <div class="card">
         <h3>Valor Total Vendido</h3>
-        <p>R$ <%= totalValor.toFixed(2) %></p>
+        <p>R$ <%= (Number(totalValor) || 0).toFixed(2) %></p>
       </div>
-    </div>
+      <div class="card">
+        <h3>Ticket Médio</h3>
+        <p>R$ <%= ticketMedio.toFixed(2) %></p>
+      </div>
+    </section>
 
-    <div class="box">
-      <h3>Produtos Mais Vendidos</h3>
+    <!-- 🔸 Gráfico de Pizza -->
+    <section class="box">
+      <h3>Distribuição por Forma de Pagamento</h3>
+      <canvas id="graficoPagamentos" width="400" height="200"></canvas>
+    </section>
+
+    <!-- 🔸 Produtos mais vendidos -->
+    <section class="box">
+      <h3>Top 5 Produtos Mais Vendidos</h3>
       <% if (topProdutos.length === 0) { %>
-        <p>Nenhum produto vendido ainda.</p>
+        <p>Nenhum produto vendido no período.</p>
       <% } else { %>
         <ul>
           <% topProdutos.forEach(p => { %>
-            <li><strong><%= p.nome_produto %></strong> - <%= p.qtd %> vendidos</li>
+            <li><strong><%= p.nome_produto %></strong> — <%= p.qtd %> vendidos</li>
           <% }) %>
         </ul>
       <% } %>
-    </div>
+    </section>
   </div>
+
+  <!-- 📊 Script do Gráfico -->
+  <script>
+    // Dados vindos do servidor
+    const fp = <%- JSON.stringify(formasPagamento || []) %>;
+
+    if (Array.isArray(fp) && fp.length > 0) {
+      const labels = fp.map(f => f.nome || '—');
+      const data = fp.map(f => Number(f.total) || 0);
+
+      const ctx = document.getElementById('graficoPagamentos')?.getContext('2d');
+      if (ctx) {
+        new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels,
+            datasets: [{
+              data,
+              backgroundColor: [
+                '#007bff', '#28a745', '#ffc107',
+                '#dc3545', '#6f42c1', '#17a2b8', '#6610f2'
+              ],
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'bottom' },
+              tooltip: {
+                callbacks: {
+                  label: item => `${item.label}: R$ ${Number(item.raw).toFixed(2)}`
+                }
+              }
+            }
+          }
+        });
+      }
+    } else {
+      const canvas = document.getElementById('graficoPagamentos');
+      if (canvas) canvas.style.display = 'none';
+    }
+  </script>
 </body>
 </html>

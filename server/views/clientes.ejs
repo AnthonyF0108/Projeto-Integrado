@@ -2,45 +2,30 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clientes - Agrovale</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f5f6fa; display: flex; }
-
-    .sidebar { width: 220px; background: #007bff; color: white; height: 100vh; position: fixed; top: 0; left: 0; padding-top: 1rem; }
-    .sidebar h2 { text-align: center; margin-bottom: 2rem; }
-    .sidebar a { display: block; padding: 0.8rem 1rem; color: white; text-decoration: none; font-weight: bold; }
-    .sidebar a:hover { background: #0056b3; }
-
-    .content { margin-left: 220px; padding: 2rem; width: calc(100% - 220px); }
-    h1 { margin-bottom: 1rem; }
-
-    .btn { padding: 8px 14px; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 0.9rem; }
-    .btn-primary { background: #28a745; color: white; }
-    .btn-warning { background: #ffc107; color: black; }
-    .btn-danger { background: #dc3545; color: white; border: none; }
-    .btn:hover { opacity: 0.9; }
-
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; border-radius: 5px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background: #007bff; color: white; }
-    tr:hover { background: #f1f1f1; }
-    form { display: inline; }
-  </style>
+  <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="sidebar">
     <h2>Agrovale</h2>
-    <a href="/dashboard">🏠 Início</a>
-    <a href="/produtos">📦 Consulta de Produto</a>
-    <a href="/vendas">💰 Vendas</a>
-    <a href="/estatisticas">📊 Estatísticas</a>
-    <a href="/clientes">👤 Clientes</a>
-    <a href="/logout">🚪 Sair</a>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Produtos</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes" class="active">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
   </div>
 
   <div class="content">
-    <h1>Clientes</h1>
-    <a href="/clientes/novo" class="btn btn-primary">➕ Novo Cliente</a>
+    <header><h1>📋 Lista de Clientes</h1></header>
+
+    <div class="text-center">
+      <a href="/clientes/novo" class="btn btn-success">+ Novo Cliente</a>
+    </div>
 
     <table>
       <thead>
@@ -51,29 +36,43 @@
           <th>Email</th>
           <th>Telefone</th>
           <th>Endereço</th>
+          <th>Status</th>
           <th>Ações</th>
         </tr>
       </thead>
       <tbody>
-        <% if (clientes.length > 0) { %>
+        <% if (!clientes || clientes.length === 0) { %>
+          <tr><td colspan="8" class="text-center">Nenhum cliente cadastrado.</td></tr>
+        <% } else { %>
           <% clientes.forEach(c => { %>
-            <tr>
+            <tr class="<%= c.Ativo === 0 ? 'inativo' : '' %>">
               <td><%= c.ClienteID %></td>
-              <td><%= c.Nome %></td>
-              <td><%= c.CPF_CNPJ %></td>
-              <td><%= c.Email %></td>
-              <td><%= c.Telefone %></td>
-              <td><%= c.Endereco %></td>
               <td>
-                <a href="/clientes/alterar/<%= c.ClienteID %>" class="btn btn-warning">✏️ Editar</a>
-                <form action="/clientes/excluir/<%= c.ClienteID %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
-                  <button type="submit" class="btn btn-danger">🗑️ Excluir</button>
-                </form>
+                <%= c.Nome %>
+                <% if (c.Ativo === 0) { %>
+                  <span class="status-inativo">(Inativo)</span>
+                <% } %>
+              </td>
+              <td><%= c.CPF_CNPJ %></td>
+              <td><%= c.Email || '-' %></td>
+              <td><%= c.Telefone || '-' %></td>
+              <td><%= c.Endereco || '-' %></td>
+              <td><%= c.Ativo === 1 ? 'Ativo' : 'Inativo' %></td>
+              <td class="acoes">
+                <a href="/clientes/editar/<%= c.ClienteID %>" class="btn btn-primary">Editar</a>
+
+                <% if (c.Ativo === 1) { %>
+                  <form action="/clientes/inativar/<%= c.ClienteID %>" method="POST" class="inline-form">
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('Deseja inativar este cliente?')">Inativar</button>
+                  </form>
+                <% } else { %>
+                  <form action="/clientes/ativar/<%= c.ClienteID %>" method="POST" class="inline-form">
+                    <button type="submit" class="btn btn-success">Ativar</button>
+                  </form>
+                <% } %>
               </td>
             </tr>
           <% }) %>
-        <% } else { %>
-          <tr><td colspan="7" style="text-align:center;">Nenhum cliente cadastrado.</td></tr>
         <% } %>
       </tbody>
     </table>

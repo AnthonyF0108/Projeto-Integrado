@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Agrovale</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Agrovale</h2>
+    <ul>
+      <li><a href="/dashboard">🏠 Início</a></li>
+      <li><a href="/produtos">📦 Produtos</a></li>
+      <li><a href="/vendas">💰 Vendas</a></li>
+      <li><a href="/estatisticas">📊 Estatísticas</a></li>
+      <li><a href="/clientes">👤 Clientes</a></li>
+      <li><a href="/relatorios/auditoria">🧾 Auditoria</a></li>
+      <li><a href="/logout">🚪 Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="content">
+    <header><h1>Agrovale — Painel Administrativo</h1></header>
+
+    <form action="<%= cliente ? '/clientes/alterar/' + cliente.ClienteID : '/clientes/novo' %>" method="POST">
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" name="nome" value="<%= cliente ? cliente.Nome : '' %>" required>
+      </div>
+
+      <div class="form-group">
+        <label>CPF/CNPJ</label>
+        <input type="text" name="cpf_cnpj" value="<%= cliente ? cliente.CPF_CNPJ : '' %>" required>
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" value="<%= cliente ? cliente.Email : '' %>">
+      </div>
+
+      <div class="form-group">
+        <label>Telefone</label>
+        <input type="text" name="telefone" value="<%= cliente ? cliente.Telefone : '' %>">
+      </div>
+
+      <div class="form-group">
+        <label>Endereço</label>
+        <input type="text" name="endereco" value="<%= cliente ? cliente.Endereco : '' %>">
+      </div>
+
+      <button type="submit" class="btn btn-success">Salvar</button>
+      <a href="/clientes" class="btn btn-secondary">Cancelar</a>
+    </form>
+  </div>
+</body>
+</html>

@@ -5,311 +5,258 @@ const auth = require('./auth');
 const adminUsuarios = require('./admin.usuarios');
 const { registrarLog } = require('../utils/logHelper');
 
+// 🔐 Autenticação e rotas administrativas
 router.use('/', auth);
 router.use('/admin/usuarios', adminUsuarios);
 
+// 🔒 Middleware para proteger rotas apenas de administradores
+function verificarAdmin(req, res, next) {
+  if (!req.session || !req.session.user) {
+    return res.redirect('/login');
+  }
+
+  if (req.session.user.role !== 'admin') {
+    return res.render('acesso-negado', { usuario: req.session.user });
+  }
+
+  next();
+}
+
+/* ===============================
+   ROTA RAIZ
+=============================== */
 router.get('/', (req, res) => {
   if (req.session && req.session.user) return res.redirect('/dashboard');
   res.redirect('/login');
 });
 
-// ================================================
-// DASHBOARD
-// ================================================
+/* ===============================
+   DASHBOARD (com busca de produtos)
+=============================== */
 router.get('/dashboard', async (req, res) => {
-  if (!req.session || !req.session.user) {
-    return res.redirect('/login');
-  }
+  if (!req.session || !req.session.user) return res.redirect('/login');
 
-  const { id: userId, role } = req.session.user;
-  const isAdmin = role === 'admin';
+  const termo = (req.query.termo || '').trim();
 
   try {
-    const whereUser = isAdmin ? '' : 'WHERE v.UsuarioID = ?';
-    const params = isAdmin ? [] : [userId];
-
-    const [vendasRows] = await pool.query(`
-      SELECT 
-        v.VendaID, v.NumeroPedido, v.DataVenda,
-        v.ValorBruto, v.Desconto, v.ValorLiquido, v.Status,
-        u.Nome AS VendedorNome
-      FROM Venda v
-      INNER JOIN Usuarios u ON v.UsuarioID = u.UsuarioID
-      ${whereUser}
-      ORDER BY v.DataVenda DESC
-      LIMIT 20
-    `, params);
-
-    const [[totalVendasRow]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM Venda v ${whereUser}`,
-      params
+    const [[{ totalProdutos }]] = await pool.query(
+      'SELECT COUNT(*) AS totalProdutos FROM Produto'
+    );
+    const [[{ totalVendas }]] = await pool.query(
+      'SELECT COUNT(*) AS totalVendas FROM Venda'
+    );
+    const [[{ totalVendido }]] = await pool.query(
+      'SELECT IFNULL(SUM(ValorLiquido), 0) AS totalVendido FROM Venda'
     );
 
-    const [[totalValorRow]] = await pool.query(
-      `SELECT SUM(v.ValorLiquido) AS total FROM Venda v ${whereUser}`,
-      params
-    );
-
-    const [[totalClientesRow]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM Cliente`
-    );
-
-    const [[estoqueBaixoRow]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM Produto WHERE EstoqueAtual < EstoqueMinimo`
-    );
-
-    const flashMessage = req.session.flashMessage;
-    req.session.flashMessage = null;
+    let produtos = [];
+    if (termo) {
+      const [rows] = await pool.query(
+        `
+        SELECT ProdutoID, Codigo, Nome, PrecoVenda, EstoqueAtual
+        FROM Produto
+        WHERE Nome LIKE ? OR Codigo LIKE ?
+        ORDER BY Nome
+      `,
+        [`%${termo}%`, `%${termo}%`]
+      );
+      produtos = rows.map(r => ({
+        ...r,
+        PrecoVenda: Number(r.PrecoVenda || 0),
+        EstoqueAtual: Number(r.EstoqueAtual || 0),
+      }));
+    }
 
     res.render('dashboard', {
+      termo,
+      produtos, // sempre definido
+      totalProdutos,
+      totalVendas,
+      totalVendido,
       user: req.session.user,
-      totalVendas: Number(totalVendasRow.total || 0),
-      totalValor: parseFloat(totalValorRow.total || 0),
-      totalClientes: Number(totalClientesRow.total || 0),
-      estoqueBaixo: Number(estoqueBaixoRow.total || 0),
-      vendas: vendasRows,
-      isAdmin,
-      flashMessage
-    });
-
-    req.session.flashMessage = null;
-
-  } catch (err) {
-    console.error('Erro no dashboard:', err);
-    res.status(500).send('Erro ao carregar dashboard');
-  }
-});
-
-// =========================
-// Criar Venda
-// =========================
-router.post("/vendas/criar", async (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  
-  const connection = await pool.getConnection();
-
-  try {
-    await connection.beginTransaction();
-
-    const { clienteId, formaPagamentoId, desconto, observacoes, produtos, quantidades } = req.body;
-    const userId = req.session.user.id;
-    
-    const produtosIds = produtos.map(id => parseInt(id));
-    const [produtosData] = await connection.query(
-      `SELECT ProdutoID, PrecoVenda FROM Produto WHERE ProdutoID IN (?)`,
-      [produtosIds]
-    );
-
-    const produtosMap = new Map();
-    produtosData.forEach(p => produtosMap.set(p.ProdutoID, p.PrecoVenda));
-    
-    let valorBruto = 0;
-    
-    for (let i = 0; i < produtos.length; i++) {
-      const produtoId = parseInt(produtos[i]);
-      const quantidade = parseFloat(quantidades[i]);
-      const precoUnitario = produtosMap.get(produtoId);
-      
-      if (precoUnitario) {
-        valorBruto += quantidade * precoUnitario;
-      }
-    }
-
-    const numeroPedido = `VENDA-${Date.now()}`;
-    
-    const descontoPerc = parseFloat(desconto) || 0;
-    const descontoValor = valorBruto * (descontoPerc / 100);
-    const valorLiquido = valorBruto - descontoValor;
-    
-    const [vendaResult] = await connection.query(
-      `INSERT INTO Venda (
-          NumeroPedido, DataVenda, ClienteID, UsuarioID, TempoID, FormaPagamentoID,
-          ValorBruto, Desconto, ValorLiquido, Frete, Observacoes
-       ) VALUES (?, NOW(), ?, ?, 1, ?, ?, ?, ?, 0, ?)`,
-      [numeroPedido, clienteId, userId, formaPagamentoId, valorBruto, descontoValor, valorLiquido, observacoes]
-    );
-    const vendaId = vendaResult.insertId;
-
-    for (let i = 0; i < produtos.length; i++) {
-      const produtoId = parseInt(produtos[i]);
-      const quantidade = parseFloat(quantidades[i]);
-      const precoUnitario = produtosMap.get(produtoId);
-
-      await connection.query(
-        `INSERT INTO ItemVenda (VendaID, ProdutoID, Quantidade, PrecoUnitario, TotalItem) 
-         VALUES (?, ?, ?, ?, ?)`,
-        [vendaId, produtoId, quantidade, precoUnitario, quantidade * precoUnitario]
-      );
-      
-      await connection.query(
-        `UPDATE Produto SET EstoqueAtual = EstoqueAtual - ? WHERE ProdutoID = ?`,
-        [quantidade, produtoId]
-      );
-    }
-    
-    await connection.commit();
-    res.redirect('/dashboard'); 
-    
-  } catch (err) {
-    await connection.rollback();
-    console.error("Erro ao criar venda:", err);
-    res.status(500).send("Erro ao finalizar a venda: " + err.message);
-  } finally {
-    connection.release();
-  }
-
-});
-
-router.get("/vendas", async (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  try {
-    const [clientes] = await pool.query('SELECT ClienteID, Nome, CPF_CNPJ FROM Cliente ORDER BY Nome');
-    const [produtos] = await pool.query('SELECT ProdutoID, Nome, PrecoVenda, UnidadeMedida FROM Produto WHERE Ativo = 1 ORDER BY Nome');
-    const [formasPagamento] = await pool.query('SELECT PagamentoID, Nome FROM FormaPagamento ORDER BY Nome');
-    
-    res.render("vendas", { clientes, produtos, formasPagamento });
-  } catch (err) {
-    console.error("Erro ao carregar dados para a página de vendas:", err);
-    res.status(500).send("Erro ao carregar página de vendas: " + err.message);
-  }
-});
-
-// ================================================
-// ESTATÍSTICAS
-// ================================================
-router.get("/estatisticas", async (req, res) => {
-  if (!req.session || !req.session.user) return res.redirect('/login');
-  
-  const { id: userId, role } = req.session.user;
-  const isAdmin = role === 'admin';
-
-  try {
-    const whereUser = isAdmin ? '' : 'WHERE v.UsuarioID = ?';
-    const params = isAdmin ? [] : [userId];
-
-    const [[totalVendasRow]] = await pool.query(`SELECT COUNT(*) AS totalVendas FROM Venda v ${whereUser}`, params);
-    const [[totalValorRow]]  = await pool.query(`SELECT IFNULL(SUM(v.ValorLiquido), 0) AS totalValor FROM Venda v ${whereUser}`, params);
-
-    const [topProdutos] = await pool.query(`
-      SELECT p.Nome AS nome_produto, SUM(iv.Quantidade) AS qtd
-      FROM ItemVenda iv
-      INNER JOIN Produto p ON iv.ProdutoID = p.ProdutoID
-      INNER JOIN Venda v ON iv.VendaID = v.VendaID
-      ${whereUser}
-      GROUP BY p.ProdutoID
-      ORDER BY qtd DESC
-      LIMIT 5
-    `, params);
-
-    res.render("estatisticas", { 
-      totalVendas: Number(totalVendasRow.totalVendas || 0),
-      totalValor: parseFloat(totalValorRow.totalValor || 0),
-      topProdutos: topProdutos || []
     });
   } catch (err) {
-    console.error("Erro ao carregar estatísticas:", err);
-    res.status(500).send("Erro ao carregar estatísticas: " + err.message);
+    console.error('Erro ao carregar dashboard:', err);
+    res.status(500).send('Erro ao carregar dashboard: ' + err.message);
   }
 });
 
-// ================================================
-// PRODUTOS
-// ================================================
-router.get("/produtos", async (req, res) => {
+/* ===============================
+   PRODUTOS
+=============================== */
+router.get('/produtos', async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+
   try {
     const [rows] = await pool.query(`
       SELECT 
-        ProdutoID AS codigo_interno,
-        Codigo AS codigo_externo,
-        Nome AS nome_produto,
-        PrecoVenda AS valor_venda_vista,
-        (PrecoVenda * 1.10) AS valor_venda_prazo,
-        EstoqueAtual AS quantidade_estoque
+        ProdutoID, Codigo, Nome, Categoria, Subcategoria,
+        PrecoCusto, PrecoVenda, UnidadeMedida,
+        EstoqueAtual, EstoqueMinimo, FornecedorID, Ativo
       FROM Produto
       ORDER BY Nome
     `);
-    
+
     const produtos = rows.map(p => ({
       ...p,
-      valor_venda_vista: parseFloat(p.valor_venda_vista),
-      valor_venda_prazo: parseFloat(p.valor_venda_prazo)
+      PrecoVenda: Number(p.PrecoVenda || 0),
+      PrecoCusto: Number(p.PrecoCusto || 0),
+      EstoqueAtual: Number(p.EstoqueAtual || 0),
+      Ativo: Number(p.Ativo || 0),
     }));
 
-    res.render("produtos", { produtos });
+    res.render('produtos', { produtos });
   } catch (err) {
-    console.error("Erro ao buscar produtos:", err);
-    res.status(500).send("Erro ao buscar produtos: " + err.message);
+    console.error('Erro ao buscar produtos:', err);
+    res.status(500).send('Erro ao buscar produtos: ' + err.message);
   }
 });
 
-router.get("/produtos/criar", (req, res) => {
+/* -------- Formulário: novo produto -------- */
+router.get('/produtos/criar', (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
-  res.render("produto-form", { produto: null, title: 'Novo Produto' });
+
+  res.render('produto-form', {
+    produto: null,
+    title: 'Novo Produto',
+    action: '/produtos/criar'
+  });
 });
 
-router.post("/produtos/criar", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  
+
+/* -------- Criar produto -------- */
+router.post('/produtos/criar', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
   try {
-    const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
-    const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
+    const {
+      nome_produto,
+      categoria,
+      subcategoria,
+      preco_custo,
+      margem_lucro,
+      unidade_medida,
+      quantidade_estoque,
+      estoque_minimo,
+      fornecedor_id,
+    } = req.body;
+
+    const precoCusto = Number(preco_custo || 0);
+    const margem = Number(margem_lucro || 0);
+    const precoVenda = precoCusto * (1 + margem / 100);
 
     const [result] = await pool.query(
-      `INSERT INTO Produto (Codigo, Nome, Categoria, Subcategoria, PrecoCusto, PrecoVenda, UnidadeMedida, EstoqueAtual, EstoqueMinimo, FornecedorID) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id]
+      `
+      INSERT INTO Produto 
+        (Codigo, Nome, Categoria, Subcategoria, PrecoCusto, PrecoVenda, UnidadeMedida,
+        EstoqueAtual, EstoqueMinimo, FornecedorID, Ativo)
+      VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `,
+      [
+        nome_produto,
+        categoria || '',
+        subcategoria || null,
+        precoCusto,
+        precoVenda,
+        unidade_medida || 'un',
+        Number(quantidade_estoque || 0),
+        Number(estoque_minimo || 0),
+        fornecedor_id || null,
+      ]
     );
-
-    const novoProdutoID = result.insertId;
 
     await registrarLog(
       req.session.user.id,
       'Cadastro de Produto',
       'Produto',
-      novoProdutoID,
+      result.insertId,
       `Produto "${nome_produto}" criado por ${req.session.user.nome}`
     );
 
     res.redirect('/produtos');
   } catch (err) {
-    console.error("Erro ao criar produto:", err);
-    res.status(500).send("Erro ao criar produto: " + err.message);
+    console.error('Erro ao criar produto:', err);
+    res.status(500).send('Erro ao criar produto: ' + err.message);
   }
 });
 
-router.get("/produtos/alterar/:id", async (req, res) => {
+/* -------- Formulário: editar produto -------- */
+router.get('/produtos/editar/:id', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
-  
+
   try {
     const produtoId = req.params.id;
-    const [rows] = await pool.query(`SELECT * FROM Produto WHERE ProdutoID = ?`, [produtoId]);
-    if (rows.length === 0) return res.status(404).send('Produto não encontrado');
+    const [[produto]] = await pool.query(
+      `SELECT * FROM Produto WHERE ProdutoID = ?`,
+      [produtoId]
+    );
 
-    const produto = rows[0];
-    produto.margem_lucro = produto.PrecoCusto > 0
-      ? (((produto.PrecoVenda - produto.PrecoCusto) / produto.PrecoCusto) * 100).toFixed(2)
-      : 0;
+    if (!produto) return res.status(404).send('Produto não encontrado');
 
-    res.render("produto-form", { produto, title: 'Alterar Produto' });
+      const precoCusto = Number(produto.PrecoCusto) || 0;
+      const precoVenda = Number(produto.PrecoVenda) || 0;
+
+      if (precoCusto > 0) {
+        produto.margem_lucro = (((precoVenda - precoCusto) / precoCusto) * 100).toFixed(2);
+      } else {
+        produto.margem_lucro = 0;
+      }
+
+    res.render('produto-form', {
+      produto,
+      title: 'Editar Produto',
+      action: `/produtos/editar/${produtoId}`,
+    });
   } catch (err) {
-    console.error("Erro ao buscar produto:", err);
-    res.status(500).send("Erro ao buscar produto: " + err.message);
+    console.error('Erro ao carregar produto:', err);
+    res.status(500).send('Erro ao carregar produto: ' + err.message);
   }
 });
 
-router.post("/produtos/alterar/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  
+/* -------- Atualizar produto -------- */
+router.post('/produtos/editar/:id', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
   try {
     const produtoId = req.params.id;
-    const { codigo_externo, nome_produto, categoria, subcategoria, preco_custo, margem_lucro, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id } = req.body;
-    const preco_venda_calculado = parseFloat(preco_custo) * (1 + (parseFloat(margem_lucro) / 100));
+    const {
+      nome_produto,
+      categoria,
+      subcategoria,
+      preco_custo,
+      margem_lucro,
+      unidade_medida,
+      fornecedor_id,
+    } = req.body;
+
+    const precoCusto = Number(preco_custo || 0);
+    const margem = Number(margem_lucro || 0);
+    const precoVenda = precoCusto * (1 + margem / 100);
 
     await pool.query(
-      `UPDATE Produto 
-       SET Codigo=?, Nome=?, Categoria=?, Subcategoria=?, PrecoCusto=?, PrecoVenda=?, UnidadeMedida=?, EstoqueAtual=?, EstoqueMinimo=?, FornecedorID=? 
-       WHERE ProdutoID=?`,
-      [codigo_externo, nome_produto, categoria, subcategoria, preco_custo, preco_venda_calculado, unidade_medida, quantidade_estoque, estoque_minimo, fornecedor_id, produtoId]
+      `
+      UPDATE Produto SET
+        Nome = ?,
+        Categoria = ?,
+        Subcategoria = ?,
+        PrecoCusto = ?,
+        PrecoVenda = ?,
+        UnidadeMedida = ?,
+        FornecedorID = ?
+      WHERE ProdutoID = ?
+    `,
+      [
+        nome_produto,
+        categoria || '',
+        subcategoria || null,
+        precoCusto,
+        precoVenda,
+        unidade_medida || 'un',
+        fornecedor_id || null,
+        produtoId,
+      ]
     );
 
     await registrarLog(
@@ -317,74 +264,119 @@ router.post("/produtos/alterar/:id", async (req, res) => {
       'Atualização de Produto',
       'Produto',
       produtoId,
-      `Produto "${nome_produto}" alterado por ${req.session.user.nome}`
+      `Produto "${nome_produto}" atualizado por ${req.session.user.nome}`
     );
 
     res.redirect('/produtos');
   } catch (err) {
-    console.error("Erro ao alterar produto:", err);
-    res.status(500).send("Erro ao alterar produto: " + err.message);
+    console.error('Erro ao atualizar produto:', err);
+    res.status(500).send('Erro ao atualizar produto: ' + err.message);
   }
 });
 
-router.post("/produtos/excluir/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
-  
+/* -------- Inativar produto -------- */
+router.post('/produtos/inativar/:id', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
   try {
     const produtoId = req.params.id;
+    const [[produto]] = await pool.query(
+      `SELECT Nome FROM Produto WHERE ProdutoID = ?`,
+      [produtoId]
+    );
 
-    // 🔎 Busca o nome antes de excluir para salvar no log
-    const [[produto]] = await pool.query(`SELECT Nome FROM Produto WHERE ProdutoID = ?`, [produtoId]);
-
-    await pool.query(`DELETE FROM Produto WHERE ProdutoID = ?`, [produtoId]);
+    await pool.query(`UPDATE Produto SET Ativo = 0 WHERE ProdutoID = ?`, [produtoId]);
 
     await registrarLog(
       req.session.user.id,
-      'Exclusão de Produto',
+      'Inativação de Produto',
       'Produto',
       produtoId,
-      `Produto "${produto ? produto.Nome : produtoId}" excluído por ${req.session.user.nome}`
+      `Produto "${(produto && produto.Nome) || produtoId}" inativado por ${req.session.user.nome}`
     );
 
     res.redirect('/produtos');
   } catch (err) {
-    console.error("Erro ao excluir produto:", err);
-    res.status(500).send("Erro ao excluir produto: " + err.message);
+    console.error('Erro ao inativar produto:', err);
+    res.status(500).send('Erro ao inativar produto: ' + err.message);
   }
 });
 
-// ================================================
-// CLIENTES
-// ================================================
+/* -------- Reativar produto -------- */
+router.post('/produtos/ativar/:id', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
 
-router.get("/clientes", async (req, res) => {
+  try {
+    const produtoId = req.params.id;
+
+    await pool.query(`UPDATE Produto SET Ativo = 1 WHERE ProdutoID = ?`, [produtoId]);
+
+    await registrarLog(
+      req.session.user.id,
+      'Reativação de Produto',
+      'Produto',
+      produtoId,
+      `Produto ${produtoId} reativado por ${req.session.user.nome}`
+    );
+
+    res.redirect('/produtos');
+  } catch (err) {
+    console.error('Erro ao reativar produto:', err);
+    res.status(500).send('Erro ao reativar produto: ' + err.message);
+  }
+});
+
+/* ===============================
+   CLIENTES
+=============================== */
+router.get('/clientes', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
   try {
     const [clientes] = await pool.query(`
-      SELECT ClienteID, Nome, CPF_CNPJ, Email, Telefone, Endereco
+      SELECT 
+        ClienteID,
+        Nome,
+        CPF_CNPJ,
+        Email,
+        Telefone,
+        Endereco,
+        COALESCE(Ativo, 1) AS Ativo
       FROM Cliente
       ORDER BY Nome
     `);
-    res.render("clientes", { clientes });
+
+    res.render('clientes', { clientes });
   } catch (err) {
-    console.error("Erro ao buscar clientes:", err);
-    res.status(500).send("Erro ao buscar clientes: " + err.message);
+    console.error('Erro ao buscar clientes:', err);
+    res.status(500).send('Erro ao buscar clientes: ' + err.message);
   }
 });
 
-router.get("/clientes/novo", (req, res) => {
+/* -------- Formulário: Novo Cliente -------- */
+router.get('/clientes/novo', (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
-  res.render("clientes-form", { cliente: null, title: 'Novo Cliente' });
+  res.render('cliente-form', {
+    cliente: null,
+    title: 'Novo Cliente',
+    action: '/clientes/novo'
+  });
 });
 
-router.post("/clientes/novo", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+/* -------- Criar Cliente -------- */
+router.post('/clientes/novo', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
   try {
     const { nome, cpf_cnpj, email, telefone, endereco } = req.body;
 
     const [result] = await pool.query(
-      `INSERT INTO Cliente (Nome, CPF_CNPJ, Email, Telefone, Endereco)
-       VALUES (?, ?, ?, ?, ?)`,
+      `
+      INSERT INTO Cliente (Nome, CPF_CNPJ, Email, Telefone, Endereco, Ativo)
+      VALUES (?, ?, ?, ?, ?, 1)
+    `,
       [nome, cpf_cnpj, email, telefone, endereco]
     );
 
@@ -398,13 +390,15 @@ router.post("/clientes/novo", async (req, res) => {
 
     res.redirect('/clientes');
   } catch (err) {
-    console.error("Erro ao criar cliente:", err);
-    res.status(500).send("Erro ao criar cliente: " + err.message);
+    console.error('Erro ao cadastrar cliente:', err);
+    res.status(500).send('Erro ao cadastrar cliente: ' + err.message);
   }
 });
 
-router.get("/clientes/alterar/:id", async (req, res) => {
+/* -------- Formulário: Editar Cliente -------- */
+router.get('/clientes/editar/:id', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
+
   try {
     const clienteId = req.params.id;
     const [[cliente]] = await pool.query(
@@ -412,27 +406,34 @@ router.get("/clientes/alterar/:id", async (req, res) => {
       [clienteId]
     );
 
-    if (!cliente) {
-      return res.status(404).send('Cliente não encontrado');
-    }
+    if (!cliente) return res.status(404).send('Cliente não encontrado.');
 
-    res.render("clientes-form", { cliente, title: 'Alterar Cliente' });
+    res.render('cliente-form', {
+      cliente,
+      title: 'Editar Cliente',
+      action: `/clientes/editar/${clienteId}`
+    });
   } catch (err) {
-    console.error("Erro ao buscar cliente:", err);
-    res.status(500).send("Erro ao buscar cliente: " + err.message);
+    console.error('Erro ao buscar cliente:', err);
+    res.status(500).send('Erro ao buscar cliente: ' + err.message);
   }
 });
 
-router.post("/clientes/alterar/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+/* -------- Atualizar Cliente -------- */
+router.post('/clientes/editar/:id', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
   try {
     const clienteId = req.params.id;
     const { nome, cpf_cnpj, email, telefone, endereco } = req.body;
 
     await pool.query(
-      `UPDATE Cliente
-       SET Nome = ?, CPF_CNPJ = ?, Email = ?, Telefone = ?, Endereco = ?
-       WHERE ClienteID = ?`,
+      `
+      UPDATE Cliente
+      SET Nome = ?, CPF_CNPJ = ?, Email = ?, Telefone = ?, Endereco = ?
+      WHERE ClienteID = ?
+    `,
       [nome, cpf_cnpj, email, telefone, endereco, clienteId]
     );
 
@@ -441,116 +442,466 @@ router.post("/clientes/alterar/:id", async (req, res) => {
       'Alteração de Cliente',
       'Cliente',
       clienteId,
-      `Cliente "${nome}" alterado por ${req.session.user.nome}`
+      `Cliente "${nome}" atualizado por ${req.session.user.nome}`
     );
 
     res.redirect('/clientes');
   } catch (err) {
-    console.error("Erro ao alterar cliente:", err);
-    res.status(500).send("Erro ao alterar cliente: " + err.message);
+    console.error('Erro ao atualizar cliente:', err);
+    res.status(500).send('Erro ao atualizar cliente: ' + err.message);
   }
 });
 
-router.post("/clientes/excluir/:id", async (req, res) => {
-  if (!req.session || !req.session.user) return res.status(401).send('Não autorizado');
+/* -------- Inativar Cliente -------- */
+router.post('/clientes/inativar/:id', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
   try {
     const clienteId = req.params.id;
-
-    const [[checkVenda]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM Venda WHERE ClienteID = ?`,
+    const [[cliente]] = await pool.query(
+      `SELECT Nome FROM Cliente WHERE ClienteID = ?`,
       [clienteId]
     );
 
-    if (checkVenda.total > 0) {
-      return res.send(`
-        <body style="font-family: Arial; text-align:center; padding-top:50px;">
-          <h3>⚠️ Não é possível excluir este cliente, pois ele possui vendas registradas.</h3>
-          <p><a href="/clientes" style="color: blue; text-decoration: underline;">Voltar à lista de clientes</a></p>
-          <script>
-            setTimeout(() => { window.location.href = '/clientes'; }, 3500);
-          </script>
-        </body>
-      `);
-    }
+    if (!cliente) return res.status(404).send('Cliente não encontrado.');
 
-    const [[cliente]] = await pool.query(`SELECT Nome FROM Cliente WHERE ClienteID = ?`, [clienteId]);
-    await pool.query(`DELETE FROM Cliente WHERE ClienteID = ?`, [clienteId]);
+    await pool.query(`UPDATE Cliente SET Ativo = 0 WHERE ClienteID = ?`, [clienteId]);
 
     await registrarLog(
       req.session.user.id,
-      'Exclusão de Cliente',
+      'Inativação de Cliente',
       'Cliente',
       clienteId,
-      `Cliente "${cliente?.Nome || 'Desconhecido'}" excluído por ${req.session.user.nome}`
+      `Cliente "${cliente.Nome}" inativado por ${req.session.user.nome}`
     );
 
     res.redirect('/clientes');
   } catch (err) {
-    console.error("Erro ao excluir cliente:", err);
-    res.status(500).send("Erro ao excluir cliente: " + err.message);
+    console.error('Erro ao inativar cliente:', err);
+    res.status(500).send('Erro ao inativar cliente: ' + err.message);
   }
 });
 
-// ================================================
-// RELATÓRIO DE AUDITORIA
-// ================================================
-router.get('/relatorios/auditoria', async (req, res) => {
-  if (!req.session.user || req.session.user.role !== 'admin') {
-    req.session.flashMessage = {
-      tipo: 'erro',
-      texto: 'Acesso negado — apenas administradores podem acessar esta área.'
-    };
-    return res.redirect('/dashboard');
+/* -------- Reativar Cliente -------- */
+router.post('/clientes/ativar/:id', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
+  try {
+    const clienteId = req.params.id;
+
+    await pool.query(`UPDATE Cliente SET Ativo = 1 WHERE ClienteID = ?`, [clienteId]);
+
+    await registrarLog(
+      req.session.user.id,
+      'Reativação de Cliente',
+      'Cliente',
+      clienteId,
+      `Cliente ${clienteId} reativado por ${req.session.user.nome}`
+    );
+
+    res.redirect('/clientes');
+  } catch (err) {
+    console.error('Erro ao reativar cliente:', err);
+    res.status(500).send('Erro ao reativar cliente: ' + err.message);
+  }
+});
+
+/* ===============================
+   ESTATÍSTICAS
+=============================== */
+router.get('/estatisticas', verificarAdmin, async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+
+  const filtro = req.query.periodo || 'mes';
+  const dataSelecionada = req.query.data || new Date().toISOString().split('T')[0];
+
+  let whereClause = '';
+  if (filtro === 'dia') {
+    whereClause = `DATE(v.DataVenda) = DATE('${dataSelecionada}')`;
+  } else if (filtro === 'mes') {
+    whereClause = `MONTH(v.DataVenda) = MONTH('${dataSelecionada}') AND YEAR(v.DataVenda) = YEAR('${dataSelecionada}')`;
+  } else {
+    whereClause = `YEAR(v.DataVenda) = YEAR('${dataSelecionada}')`;
   }
 
   try {
-    const { usuario, acao, dataInicio, dataFim } = req.query;
+    // 🔹 Total de vendas e valor total vendido
+    const [[{ totalVendas, totalValor }]] = await pool.query(`
+      SELECT 
+        COUNT(v.VendaID) AS totalVendas,
+        COALESCE(SUM(v.ValorLiquido), 0) AS totalValor
+      FROM Venda v
+      WHERE ${whereClause};
+    `);
 
-    let whereClause = [];
-    let params = [];
+    // 🔹 Ticket médio (média de valor líquido por venda)
+    const [[{ ticketMedio }]] = await pool.query(`
+      SELECT 
+        COALESCE(AVG(v.ValorLiquido), 0) AS ticketMedio
+      FROM Venda v
+      WHERE ${whereClause};
+    `);
 
-    if (usuario) {
-      whereClause.push('u.Nome LIKE ?');
-      params.push(`%${usuario}%`);
+    // 🔹 Produtos mais vendidos
+    const [topProdutos] = await pool.query(`
+      SELECT p.Nome AS nome_produto, SUM(iv.Quantidade) AS qtd
+      FROM ItemVenda iv
+      JOIN Produto p ON p.ProdutoID = iv.ProdutoID
+      JOIN Venda v ON v.VendaID = iv.VendaID
+      WHERE ${whereClause}
+      GROUP BY p.Nome
+      ORDER BY qtd DESC
+      LIMIT 5;
+    `);
+
+    // 🔹 Formas de pagamento (gráfico de pizza)
+    const [formasPagamento] = await pool.query(`
+      SELECT fp.Nome AS nome, COALESCE(SUM(v.ValorLiquido), 0) AS total
+      FROM Venda v
+      JOIN FormaPagamento fp ON fp.PagamentoID = v.FormaPagamentoID
+      WHERE ${whereClause}
+      GROUP BY fp.Nome;
+    `);
+
+    res.render('estatisticas', {
+      title: 'Estatísticas',
+      totalVendas: Number(totalVendas) || 0,
+      totalValor: Number(totalValor) || 0,
+      ticketMedio: Number(ticketMedio) || 0,
+      topProdutos,
+      formasPagamento,
+      filtro,
+      dataSelecionada
+    });
+  } catch (err) {
+    console.error('Erro ao gerar estatísticas:', err);
+    res.status(500).send('Erro ao gerar estatísticas: ' + err.message);
+  }
+});
+
+/* ===============================
+   VENDAS
+=============================== */
+router.get('/vendas', async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+
+  try {
+    const [vendas] = await pool.query(`
+      SELECT 
+        v.VendaID,
+        v.DataVenda,
+        v.ValorLiquido,
+        c.Nome AS ClienteNome,
+        u.Nome AS VendedorNome
+      FROM Venda v
+      INNER JOIN Cliente c ON v.ClienteID = c.ClienteID
+      INNER JOIN Usuarios u ON v.UsuarioID = u.UsuarioID
+      ORDER BY v.DataVenda DESC
+      LIMIT 20
+    `);
+
+    const [clientes] = await pool.query(
+      `SELECT ClienteID, Nome FROM Cliente ORDER BY Nome`
+    );
+    const [produtos] = await pool.query(
+      `SELECT ProdutoID, Nome, PrecoVenda FROM Produto WHERE Ativo = 1 OR Ativo IS NULL ORDER BY Nome`
+    );
+    const [formasPagamento] = await pool.query(
+      `SELECT PagamentoID, Nome FROM FormaPagamento ORDER BY Nome`
+    );
+
+    res.render('vendas', {
+      vendas: vendas || [],
+      clientes,
+      produtos,
+      formasPagamento,
+    });
+  } catch (err) {
+    console.error('Erro ao carregar página de vendas:', err);
+    res.status(500).send('Erro ao carregar página de vendas: ' + err.message);
+  }
+});
+
+router.get('/vendas/nova', async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+
+  try {
+    const [clientes] = await pool.query(
+      `SELECT ClienteID, Nome, CPF_CNPJ FROM Cliente ORDER BY Nome`
+    );
+    const [produtos] = await pool.query(
+      `
+      SELECT ProdutoID, Nome, PrecoVenda, UnidadeMedida
+      FROM Produto
+      WHERE Ativo = 1 OR Ativo IS NULL
+      ORDER BY Nome
+    `
+    );
+    const [formasPagamento] = await pool.query(
+      `SELECT PagamentoID, Nome FROM FormaPagamento ORDER BY Nome`
+    );
+
+    res.render('venda-nova', { clientes, produtos, formasPagamento });
+  } catch (err) {
+    console.error('Erro ao carregar página de nova venda:', err);
+    res.status(500).send('Erro ao carregar página de nova venda: ' + err.message);
+  }
+});
+
+router.post('/vendas/criar', async (req, res) => {
+  if (!req.session || !req.session.user)
+    return res.status(401).send('Não autorizado');
+
+  let {
+    clienteId,
+    formaPagamentoId,
+    produtos,
+    quantidades,
+    valores_unitarios,
+    valores_totais,
+    valor_bruto,
+    desconto,
+    valor_liquido,
+    observacoes,
+  } = req.body;
+
+  const usuarioId = req.session.user.id;
+
+  try {
+    valor_bruto = Number(valor_bruto || 0);
+    desconto = Number(desconto || 0); // %
+    valor_liquido = Number(valor_liquido || 0);
+
+    const descontoEmReais = (valor_bruto * desconto) / 100;
+    valor_liquido = valor_bruto - descontoEmReais;
+
+    const [resultVenda] = await pool.query(
+      `
+      INSERT INTO Venda
+        (ClienteID, UsuarioID, DataVenda, ValorBruto, Desconto, ValorLiquido, FormaPagamentoID, Observacoes)
+      VALUES (?, ?, NOW(), ?, ?, ?, ?, ?)
+    `,
+      [
+        clienteId,
+        usuarioId,
+        valor_bruto,
+        descontoEmReais,
+        valor_liquido,
+        formaPagamentoId,
+        observacoes || null,
+      ]
+    );
+
+    const vendaId = resultVenda.insertId;
+
+    for (let i = 0; i < produtos.length; i++) {
+      const produtoId = produtos[i];
+      const qtd = Number(quantidades[i] || 0);
+      const preco = Number(valores_unitarios[i] || 0);
+      const total = Number(valores_totais[i] || 0);
+
+      await pool.query(
+        `
+        INSERT INTO ItemVenda (VendaID, ProdutoID, Quantidade, PrecoUnitario, TotalItem)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+        [vendaId, produtoId, qtd, preco, total]
+      );
+
+      await pool.query(
+        `UPDATE Produto SET EstoqueAtual = EstoqueAtual - ? WHERE ProdutoID = ?`,
+        [qtd, produtoId]
+      );
     }
 
-    if (acao) {
-      whereClause.push('l.Acao = ?');
-      params.push(acao);
+    await registrarLog(
+      usuarioId,
+      'Cadastro de Venda',
+      'Venda',
+      vendaId,
+      `Venda ${vendaId} registrada pelo usuário ${req.session.user.nome}`
+    );
+
+    res.redirect(`/vendas/detalhes/${vendaId}`);
+  } catch (err) {
+    console.error('Erro ao registrar venda:', err);
+    res.status(500).send('Erro ao registrar venda: ' + err.message);
+  }
+});
+
+router.get('/vendas/detalhes/:id', async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+
+  const vendaId = req.params.id;
+
+  try {
+    const [[venda]] = await pool.query(
+      `
+      SELECT 
+        v.VendaID, v.DataVenda,
+        v.ValorBruto, v.Desconto, v.ValorLiquido, v.Status, v.Observacoes,
+        c.Nome AS ClienteNome, c.Email AS ClienteEmail, c.Telefone AS ClienteTelefone,
+        u.Nome AS VendedorNome
+      FROM Venda v
+      INNER JOIN Cliente c ON v.ClienteID = c.ClienteID
+      INNER JOIN Usuarios u ON v.UsuarioID = u.UsuarioID
+      WHERE v.VendaID = ?
+    `,
+      [vendaId]
+    );
+
+    if (!venda) return res.status(404).send('Venda não encontrada.');
+
+    const [itens] = await pool.query(
+      `
+      SELECT 
+        iv.ItemID, p.Nome AS ProdutoNome,
+        iv.Quantidade, iv.PrecoUnitario, iv.DescontoItem, iv.TotalItem
+      FROM ItemVenda iv
+      INNER JOIN Produto p ON iv.ProdutoID = p.ProdutoID
+      WHERE iv.VendaID = ?
+    `,
+      [vendaId]
+    );
+
+    res.render('venda-detalhes', { venda, itens });
+  } catch (err) {
+    console.error('Erro ao carregar detalhes da venda:', err);
+    res.status(500).send('Erro ao carregar detalhes da venda: ' + err.message);
+  }
+});
+
+/* ===============================
+   RELATÓRIOS / AUDITORIA
+=============================== */
+router.get('/relatorios/auditoria', verificarAdmin, async (req, res) => {
+  if (!req.session || !req.session.user) return res.redirect('/login');
+
+  return res.send(`
+    <script>
+      alert('🚫 Acesso negado! Apenas administradores podem visualizar o relatório de auditoria.');
+      window.location.href = '/dashboard';
+    </script>
+  `);
+
+  try {
+    const filtroUsuario = req.query.usuario || '';
+    const filtroAcao = req.query.acao || '';
+    const filtroInicio = req.query.dataInicio || '';
+    const filtroFim = req.query.dataFim || '';
+
+    const where = [];
+    const params = [];
+
+    if (filtroUsuario) {
+      where.push('u.Nome LIKE ?');
+      params.push('%' + filtroUsuario + '%');
+    }
+    if (filtroAcao) {
+      where.push('l.Acao = ?');
+      params.push(filtroAcao);
+    }
+    if (filtroInicio) {
+      where.push('l.DataHora >= ?');
+      params.push(filtroInicio);
+    }
+    if (filtroFim) {
+      where.push('l.DataHora <= ?');
+      params.push(filtroFim);
     }
 
-    if (dataInicio) {
-      whereClause.push('DATE(l.DataHora) >= ?');
-      params.push(dataInicio);
-    }
+    const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
 
-    if (dataFim) {
-      whereClause.push('DATE(l.DataHora) <= ?');
-      params.push(dataFim);
-    }
-
-    const whereSQL = whereClause.length > 0 ? 'WHERE ' + whereClause.join(' AND ') : '';
-
-    const [logs] = await pool.query(`
-      SELECT l.LogID, l.Acao, l.TabelaAfetada, l.RegistroID, l.Descricao, l.DataHora, u.Nome AS Usuario
+    const [logs] = await pool.query(
+      `
+      SELECT 
+        l.LogID, l.UsuarioID, u.Nome AS Usuario,
+        l.Acao, l.TabelaAfetada, l.RegistroID, l.Descricao, l.DataHora
       FROM LogAuditoria l
       INNER JOIN Usuarios u ON l.UsuarioID = u.UsuarioID
-      ${whereSQL}
+      ${whereClause}
       ORDER BY l.DataHora DESC
-    `, params);
+      LIMIT 100
+    `,
+      params
+    );
 
     res.render('relatorio-auditoria', {
-      user: req.session.user,
       logs,
-      filtroUsuario: usuario || '',
-      filtroAcao: acao || '',
-      filtroInicio: dataInicio || '',
-      filtroFim: dataFim || ''
+      filtroUsuario,
+      filtroAcao,
+      filtroInicio,
+      filtroFim,
     });
-
   } catch (err) {
-    console.error('Erro ao carregar relatório de auditoria:', err);
-    res.status(500).send('Erro ao carregar relatório de auditoria');
+    console.error('Erro ao carregar auditoria:', err);
+    res.status(500).send('Erro ao carregar auditoria: ' + err.message);
+  }
+});
+
+/* -------- Tela de entrada -------- */
+router.get('/produtos/entrada', verificarAdmin, async (req, res) => {
+  try {
+    const [produtos] = await pool.query(`
+      SELECT ProdutoID, Nome, Codigo, EstoqueAtual, PrecoCusto 
+      FROM Produto 
+      WHERE Ativo = 1
+      ORDER BY Nome;
+    `);
+
+    const produtosFormatados = produtos.map(p => ({
+      ...p,
+      PrecoCusto: Number(p.PrecoCusto) || 0,
+      EstoqueAtual: Number(p.EstoqueAtual) || 0
+    }));
+
+    res.render('entrada-mercadoria', {
+      title: 'Entrada de Mercadorias',
+      produtos: produtosFormatados,
+      usuario: req.session.user
+    });
+  } catch (err) {
+    console.error('Erro ao carregar produtos:', err);
+    res.status(500).send('Erro ao carregar produtos: ' + err.message);
+  }
+});
+
+/* -------- Registrar entrada -------- */
+router.post('/produtos/entrada', verificarAdmin, async (req, res) => {
+  try {
+    const { produto_id, quantidade, preco_custo, margem_lucro } = req.body;
+
+    const qtd = Number(quantidade || 0);
+    const custo = Number(preco_custo || 0);
+    const margem = Number(margem_lucro || 0);
+
+    if (qtd <= 0 || custo <= 0) throw new Error('Quantidade ou custo inválido');
+
+    const precoVenda = custo * (1 + margem / 100);
+
+    await pool.query(
+      `UPDATE Produto 
+       SET EstoqueAtual = EstoqueAtual + ?, 
+           PrecoCusto = ?, 
+           PrecoVenda = ? 
+       WHERE ProdutoID = ?`,
+      [qtd, custo, precoVenda, produto_id]
+    );
+
+    await registrarLog(
+      req.session.user.id,
+      'Entrada de Mercadoria',
+      'Produto',
+      produto_id,
+      `Entrada de ${qtd} unidades — custo R$${custo.toFixed(2)}, margem ${margem.toFixed(2)}% — atualizada por ${req.session.user.nome}`
+    );
+
+    res.redirect('/produtos');
+  } catch (err) {
+    console.error('Erro ao registrar entrada:', err);
+    res.status(500).send('Erro ao registrar entrada: ' + err.message);
   }
 });
 
