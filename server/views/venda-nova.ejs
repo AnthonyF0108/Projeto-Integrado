@@ -106,8 +106,6 @@
 
   <script>
     let itemCounter = 1;
-
-    // Atualiza os campos do item selecionado
     function updateFields(select, index) {
       const selectedOption = select.options[select.selectedIndex];
       const preco = parseFloat(selectedOption?.dataset?.preco);
@@ -127,7 +125,6 @@
       }
     }
 
-    // Atualiza o total de um item
     function updateTotal(index) {
       const quantidade = parseFloat(document.getElementById(`quantidade-${index}`).value);
       const valorUnitario = parseFloat(document.getElementById(`valor-unitario-${index}`).value);
@@ -142,7 +139,6 @@
       updateSummary();
     }
 
-    // Atualiza os totais gerais (bruto e líquido)
     function updateSummary() {
       const itemTotals = document.querySelectorAll('input[name="valores_totais[]"]');
       let valorBruto = 0;
@@ -158,13 +154,11 @@
       document.getElementById('valor_liquido').value = valorLiquido.toFixed(2);
     }
 
-    // Remove linha de item
     function removeItem(button) {
       button.closest('.item-row').remove();
       updateSummary();
     }
 
-    // Adiciona novo item dinamicamente
     function addItem() {
       const index = itemCounter++;
       const container = document.getElementById('itens-container');
@@ -199,9 +193,7 @@
       quantidade.addEventListener('input', () => updateTotal(index));
     }
 
-    // Inicialização ao carregar a página
     document.addEventListener('DOMContentLoaded', () => {
-      // Adiciona listeners no primeiro item
       const selectInicial = document.querySelector('.produto-select');
       const quantidadeInicial = document.getElementById('quantidade-0');
 

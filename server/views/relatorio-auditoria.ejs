@@ -36,25 +36,20 @@
         <label for="acao">Ação:</label><br>
         <select name="acao" id="acao">
           <option value="">Todas</option>
-
-          <!-- 🧾 Clientes -->
           <option value="Cadastro de Cliente" <%= filtroAcao === 'Cadastro de Cliente' ? 'selected' : '' %>>Cadastro de Cliente</option>
           <option value="Alteração de Cliente" <%= filtroAcao === 'Alteração de Cliente' ? 'selected' : '' %>>Alteração de Cliente</option>
           <option value="Inativação de Cliente" <%= filtroAcao === 'Inativação de Cliente' ? 'selected' : '' %>>Inativação de Cliente</option>
           <option value="Reativação de Cliente" <%= filtroAcao === 'Reativação de Cliente' ? 'selected' : '' %>>Reativação de Cliente</option>
 
-          <!-- 📦 Produtos -->
           <option value="Cadastro de Produto" <%= filtroAcao === 'Cadastro de Produto' ? 'selected' : '' %>>Cadastro de Produto</option>
           <option value="Atualização de Produto" <%= filtroAcao === 'Atualização de Produto' ? 'selected' : '' %>>Atualização de Produto</option>
           <option value="Exclusão de Produto" <%= filtroAcao === 'Exclusão de Produto' ? 'selected' : '' %>>Exclusão de Produto</option>
           <option value="Entrada de Mercadoria" <%= filtroAcao === 'Entrada de Mercadoria' ? 'selected' : '' %>>Entrada de Mercadoria</option>
 
-          <!-- 💰 Vendas -->
           <option value="Cadastro de Venda" <%= filtroAcao === 'Cadastro de Venda' ? 'selected' : '' %>>Cadastro de Venda</option>
           <option value="Atualização de Venda" <%= filtroAcao === 'Atualização de Venda' ? 'selected' : '' %>>Atualização de Venda</option>
           <option value="Exclusão de Venda" <%= filtroAcao === 'Exclusão de Venda' ? 'selected' : '' %>>Exclusão de Venda</option>
 
-          <!-- 👥 Usuários -->
           <option value="Cadastro de Usuário" <%= filtroAcao === 'Cadastro de Usuário' ? 'selected' : '' %>>Cadastro de Usuário</option>
           <option value="Alteração de Usuário" <%= filtroAcao === 'Alteração de Usuário' ? 'selected' : '' %>>Alteração de Usuário</option>
           <option value="Inativação de Usuário" <%= filtroAcao === 'Inativação de Usuário' ? 'selected' : '' %>>Inativação de Usuário</option>

@@ -24,7 +24,6 @@
   <div class="content">
     <header><h1>📊 Estatísticas de Vendas</h1></header>
 
-    <!-- 🔍 Filtro -->
     <form action="/estatisticas" method="GET" class="filter-form">
       <label for="periodo">Filtrar por:</label>
       <select name="periodo" id="periodo" required>
@@ -37,7 +36,6 @@
       <button type="submit" class="btn btn-primary">Aplicar</button>
     </form>
 
-    <!-- 🔹 Cards de resumo -->
     <section class="cards">
       <div class="card">
         <h3>Total de Vendas</h3>
@@ -53,13 +51,11 @@
       </div>
     </section>
 
-    <!-- 🔸 Gráfico de Pizza -->
     <section class="box">
       <h3>Distribuição por Forma de Pagamento</h3>
       <canvas id="graficoPagamentos" width="400" height="200"></canvas>
     </section>
 
-    <!-- 🔸 Produtos mais vendidos -->
     <section class="box">
       <h3>Top 5 Produtos Mais Vendidos</h3>
       <% if (topProdutos.length === 0) { %>
@@ -74,9 +70,7 @@
     </section>
   </div>
 
-  <!-- 📊 Script do Gráfico -->
   <script>
-    // Dados vindos do servidor
     const fp = <%- JSON.stringify(formasPagamento || []) %>;
 
     if (Array.isArray(fp) && fp.length > 0) {

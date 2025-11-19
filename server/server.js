@@ -9,18 +9,11 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* -------------------------
-   🧱 Configurações de Views e Arquivos Estáticos
--------------------------- */
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Serve arquivos estáticos da pasta "public"
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-/* -------------------------
-   🛡️ Segurança (Helmet)
--------------------------- */
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -48,15 +41,9 @@ app.use(
   })
 );
 
-/* -------------------------
-   📦 Middlewares de parsing
--------------------------- */
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-/* -------------------------
-   💾 Sessões e Banco de Dados
--------------------------- */
 const sessionStoreOptions = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
@@ -75,22 +62,16 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 4, // 4 horas
+      maxAge: 1000 * 60 * 60 * 4,
       httpOnly: true,
-      secure: false, // coloque true se for HTTPS
+      secure: false,
     },
   })
 );
 
-/* -------------------------
-   🚏 Rotas
--------------------------- */
 const indexRoutes = require('./routes/index');
 app.use('/', indexRoutes);
 
-/* -------------------------
-   🚀 Inicialização do Servidor
--------------------------- */
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
 });

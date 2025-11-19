@@ -5,11 +5,9 @@ const auth = require('./auth');
 const adminUsuarios = require('./admin.usuarios');
 const { registrarLog } = require('../utils/logHelper');
 
-// 🔐 Autenticação e rotas administrativas
 router.use('/', auth);
 router.use('/admin/usuarios', adminUsuarios);
 
-// 🔒 Middleware para proteger rotas apenas de administradores
 function verificarAdmin(req, res, next) {
   if (!req.session || !req.session.user) {
     return res.redirect('/login');
@@ -22,17 +20,11 @@ function verificarAdmin(req, res, next) {
   next();
 }
 
-/* ===============================
-   ROTA RAIZ
-=============================== */
 router.get('/', (req, res) => {
   if (req.session && req.session.user) return res.redirect('/dashboard');
   res.redirect('/login');
 });
 
-/* ===============================
-   DASHBOARD (com busca de produtos)
-=============================== */
 router.get('/dashboard', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -69,7 +61,7 @@ router.get('/dashboard', async (req, res) => {
 
     res.render('dashboard', {
       termo,
-      produtos, // sempre definido
+      produtos,
       totalProdutos,
       totalVendas,
       totalVendido,
@@ -81,9 +73,6 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-/* ===============================
-   PRODUTOS
-=============================== */
 router.get('/produtos', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -112,7 +101,6 @@ router.get('/produtos', async (req, res) => {
   }
 });
 
-/* -------- Formulário: novo produto -------- */
 router.get('/produtos/criar', (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -123,8 +111,6 @@ router.get('/produtos/criar', (req, res) => {
   });
 });
 
-
-/* -------- Criar produto -------- */
 router.post('/produtos/criar', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -181,7 +167,6 @@ router.post('/produtos/criar', async (req, res) => {
   }
 });
 
-/* -------- Formulário: editar produto -------- */
 router.get('/produtos/editar/:id', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -214,7 +199,6 @@ router.get('/produtos/editar/:id', async (req, res) => {
   }
 });
 
-/* -------- Atualizar produto -------- */
 router.post('/produtos/editar/:id', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -274,7 +258,6 @@ router.post('/produtos/editar/:id', async (req, res) => {
   }
 });
 
-/* -------- Inativar produto -------- */
 router.post('/produtos/inativar/:id', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -303,7 +286,6 @@ router.post('/produtos/inativar/:id', async (req, res) => {
   }
 });
 
-/* -------- Reativar produto -------- */
 router.post('/produtos/ativar/:id', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -328,9 +310,6 @@ router.post('/produtos/ativar/:id', async (req, res) => {
   }
 });
 
-/* ===============================
-   CLIENTES
-=============================== */
 router.get('/clientes', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
   try {
@@ -354,7 +333,6 @@ router.get('/clientes', async (req, res) => {
   }
 });
 
-/* -------- Formulário: Novo Cliente -------- */
 router.get('/clientes/novo', (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
   res.render('cliente-form', {
@@ -364,7 +342,6 @@ router.get('/clientes/novo', (req, res) => {
   });
 });
 
-/* -------- Criar Cliente -------- */
 router.post('/clientes/novo', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -395,7 +372,6 @@ router.post('/clientes/novo', async (req, res) => {
   }
 });
 
-/* -------- Formulário: Editar Cliente -------- */
 router.get('/clientes/editar/:id', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -419,7 +395,6 @@ router.get('/clientes/editar/:id', async (req, res) => {
   }
 });
 
-/* -------- Atualizar Cliente -------- */
 router.post('/clientes/editar/:id', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -452,7 +427,6 @@ router.post('/clientes/editar/:id', async (req, res) => {
   }
 });
 
-/* -------- Inativar Cliente -------- */
 router.post('/clientes/inativar/:id', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -483,7 +457,6 @@ router.post('/clientes/inativar/:id', async (req, res) => {
   }
 });
 
-/* -------- Reativar Cliente -------- */
 router.post('/clientes/ativar/:id', async (req, res) => {
   if (!req.session || !req.session.user)
     return res.status(401).send('Não autorizado');
@@ -508,9 +481,6 @@ router.post('/clientes/ativar/:id', async (req, res) => {
   }
 });
 
-/* ===============================
-   ESTATÍSTICAS
-=============================== */
 router.get('/estatisticas', verificarAdmin, async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -527,7 +497,6 @@ router.get('/estatisticas', verificarAdmin, async (req, res) => {
   }
 
   try {
-    // 🔹 Total de vendas e valor total vendido
     const [[{ totalVendas, totalValor }]] = await pool.query(`
       SELECT 
         COUNT(v.VendaID) AS totalVendas,
@@ -536,7 +505,6 @@ router.get('/estatisticas', verificarAdmin, async (req, res) => {
       WHERE ${whereClause};
     `);
 
-    // 🔹 Ticket médio (média de valor líquido por venda)
     const [[{ ticketMedio }]] = await pool.query(`
       SELECT 
         COALESCE(AVG(v.ValorLiquido), 0) AS ticketMedio
@@ -544,7 +512,6 @@ router.get('/estatisticas', verificarAdmin, async (req, res) => {
       WHERE ${whereClause};
     `);
 
-    // 🔹 Produtos mais vendidos
     const [topProdutos] = await pool.query(`
       SELECT p.Nome AS nome_produto, SUM(iv.Quantidade) AS qtd
       FROM ItemVenda iv
@@ -556,7 +523,6 @@ router.get('/estatisticas', verificarAdmin, async (req, res) => {
       LIMIT 5;
     `);
 
-    // 🔹 Formas de pagamento (gráfico de pizza)
     const [formasPagamento] = await pool.query(`
       SELECT fp.Nome AS nome, COALESCE(SUM(v.ValorLiquido), 0) AS total
       FROM Venda v
@@ -581,9 +547,6 @@ router.get('/estatisticas', verificarAdmin, async (req, res) => {
   }
 });
 
-/* ===============================
-   VENDAS
-=============================== */
 router.get('/vendas', async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -773,9 +736,6 @@ router.get('/vendas/detalhes/:id', async (req, res) => {
   }
 });
 
-/* ===============================
-   RELATÓRIOS / AUDITORIA
-=============================== */
 router.get('/relatorios/auditoria', verificarAdmin, async (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login');
 
@@ -834,7 +794,6 @@ router.get('/relatorios/auditoria', verificarAdmin, async (req, res) => {
   }
 });
 
-/* -------- Tela de entrada -------- */
 router.get('/produtos/entrada', verificarAdmin, async (req, res) => {
   try {
     const [produtos] = await pool.query(`
@@ -861,7 +820,6 @@ router.get('/produtos/entrada', verificarAdmin, async (req, res) => {
   }
 });
 
-/* -------- Registrar entrada -------- */
 router.post('/produtos/entrada', verificarAdmin, async (req, res) => {
   try {
     const { produto_id, quantidade, preco_custo, margem_lucro } = req.body;
