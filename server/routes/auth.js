@@ -3,16 +3,10 @@ const router = express.Router();
 const pool = require('../db');
 const bcrypt = require('bcryptjs');
 
-// ===============================
-// LOGIN (GET)
-// ===============================
 router.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
 
-// ===============================
-// LOGIN (POST)
-// ===============================
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -50,16 +44,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ===============================
-// REGISTRO (GET)
-// ===============================
 router.get('/register', (req, res) => {
   res.render('register', { error: null });
 });
 
-// ===============================
-// REGISTRO (POST)
-// ===============================
 router.post('/register', async (req, res) => {
   const { nome, cpf, email, telefone, usuario, senha, confirmarSenha } = req.body;
 
@@ -89,9 +77,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// ===============================
-// LOGOUT
-// ===============================
 router.get('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) {
@@ -103,16 +88,10 @@ router.get('/logout', (req, res) => {
   });
 });
 
-// ===============================
-// ESQUECEU A SENHA (GET)
-// ===============================
 router.get('/forgot-password', (req, res) => {
   res.render('forgot-password', { error: null, message: null });
 });
 
-// ===============================
-// ESQUECEU A SENHA (POST)
-// ===============================
 router.post('/forgot-password', async (req, res) => {
   const { username, newPassword } = req.body;
 

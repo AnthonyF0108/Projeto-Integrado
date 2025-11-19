@@ -8,7 +8,6 @@
 </head>
 
 <body>
-  <!-- ===== Sidebar ===== -->
   <div class="sidebar">
     <h2>Agrovale</h2>
     <ul>
@@ -22,16 +21,11 @@
     </ul>
   </div>
 
-  <!-- ===== Conteúdo principal ===== -->
   <div class="content">
     <header><h1>📦 Lista de Produtos</h1></header>
-
-    <!-- Botão de novo produto -->
     <div class="text-center">
       <a href="/produtos/criar" class="btn btn-success">+ Novo Produto</a>
     </div>
-
-    <!-- ===== Tabela de produtos ===== -->
     <table>
       <thead>
         <tr>
@@ -51,27 +45,16 @@
         <% } else { %>
           <% produtos.forEach(p => { %>
             <tr class="<%= p.Ativo === 0 ? 'inativo' : '' %>">
-              <!-- Código -->
               <td><%= (p.Codigo || p.ProdutoID).toString().padStart(5, '0') %></td>
-
-              <!-- Nome -->
               <td>
                 <%= p.Nome %>
                 <% if (p.Ativo === 0) { %>
                   <span class="status-inativo">(Inativo)</span>
                 <% } %>
               </td>
-
-              <!-- Categoria -->
               <td><%= p.Categoria || '-' %></td>
-
-              <!-- Preço -->
               <td>R$ <%= p.PrecoVenda ? p.PrecoVenda.toFixed(2) : '0.00' %></td>
-
-              <!-- Estoque -->
               <td><%= p.EstoqueAtual || 0 %></td>
-
-              <!-- Ações -->
               <td class="acoes">
                 <a href="/produtos/editar/<%= p.ProdutoID %>" class="btn btn-primary">Editar</a>
 

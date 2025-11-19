@@ -23,7 +23,7 @@
   <div class="content">
     <header><h1>Agrovale — Painel Administrativo</h1></header>
 
-    <form action="<%= cliente ? '/clientes/alterar/' + cliente.ClienteID : '/clientes/novo' %>" method="POST">
+    <form action="<%= cliente ? '/clientes/editar/' + cliente.ClienteID : '/clientes/novo' %>" method="POST">
       <div class="form-group">
         <label>Nome</label>
         <input type="text" name="nome" value="<%= cliente ? cliente.Nome : '' %>" required>
