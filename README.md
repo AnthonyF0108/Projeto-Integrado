@@ -43,6 +43,7 @@ npm install
 ## ⚙️ Configuração
 
 Crie um arquivo `.env` na raiz do projeto com as variáveis de conexão ao banco:
+Os campos de DB_PASS e SESSION_SECRET tem que ser retirado do "" e trocao por uma senho e palavra de sua preferência
 
 ```env
 DB_HOST=localhost
@@ -61,8 +62,8 @@ NODE_ENV=development
 
 ## 🗄️ Banco de Dados
 
-1. Crie um banco no MySQL (ou MariaDB).  
-2. Importe o script `Banco de dados Agrovale.sql` para criar as tabelas:  
+1. Abra o MySQL (ou MariaDB).  
+2. Importe o script `Banco de dados Agrovale.sql` para criar o banco as tabelas já configuradas:  
 
 ```bash
 mysql -u root -p agrovale < "Banco de dados Agrovale.sql"
