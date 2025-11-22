@@ -43,7 +43,7 @@ npm install
 ## ⚙️ Configuração
 
 Crie um arquivo `.env` na raiz do projeto com as variáveis de conexão ao banco:
-Os campos de DB_PASS e SESSION_SECRET tem que ser retirado do "" e trocao por uma senho e palavra de sua preferência
+Os campos de DB_PASS e SESSION_SECRET tem que ser retirado do "" e trocado por uma senha e palavra de sua preferência
 
 ```env
 DB_HOST=localhost
