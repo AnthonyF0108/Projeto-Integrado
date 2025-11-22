@@ -42,18 +42,17 @@ npm install
 
 ## ⚙️ Configuração
 
-Crie um arquivo `.env` na raiz do projeto com as variáveis de conexão ao banco:
-Os campos de DB_PASS e SESSION_SECRET tem que ser retirado do "" e trocado por uma senha e palavra de sua preferência
+Crie um arquivo `.env` na raiz do projeto. Copie o modelo abaixo e preencha com suas credenciais locais:
 
 ```env
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
-DB_PASS="suasenha"
+DB_PASS=suasenha
 DB_NAME=agrovale
 
 PORT=3000
-SESSION_SECRET="trocar_para_algo_secreto"
+SESSION_SECRET=trocar_para_algo_secreto
 SESSION_KEY=agrovale_sess
 NODE_ENV=development
 ```
@@ -87,6 +86,11 @@ http://localhost:3000
 
 ---
 
+## 👥 Autores
+Anthony Ferreira - Desenvolvimento Fullstack
+Victor Daniel Lopes Ferreira
+Hanry de Sousa
+Hugo Palmiro Bento Francisco
 
 ## 📜 Licença
 
